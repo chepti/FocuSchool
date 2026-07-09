@@ -29,7 +29,7 @@ export default async function HomePage() {
         {strips.map((strip) => (
           <StripRow key={strip.id} strip={strip} />
         ))}
-        <EventsCalendar events={events} />
+        <EventsCalendar events={events} calendarId={school.calendarId} />
       </main>
       <Footer />
     </>

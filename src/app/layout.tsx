@@ -9,6 +9,8 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://focuschool.chepti.com"),
+  alternates: { canonical: "/" },
   title: {
     default: `${demoSchool.name} — פוקוסקול`,
     template: `%s — ${demoSchool.name}`,

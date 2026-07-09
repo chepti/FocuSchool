@@ -50,7 +50,13 @@ function gregorianLabel(date: Date): string {
   return date.toLocaleDateString("he-IL", { day: "numeric", month: "long" });
 }
 
-export function EventsCalendar({ events }: { events: SchoolEvent[] }) {
+export function EventsCalendar({
+  events,
+  calendarId,
+}: {
+  events: SchoolEvent[];
+  calendarId?: string;
+}) {
   const firstUpcoming = useMemo(() => {
     const today = isoOf(new Date());
     const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
@@ -259,9 +265,20 @@ export function EventsCalendar({ events }: { events: SchoolEvent[] }) {
                 בחרו יום בלוח כדי לראות את פרטי האירועים.
               </p>
             )}
-            <p className="mt-4 rounded-xl bg-brand-purple/10 px-3 py-2 text-xs font-medium text-brand-violet">
-              בקרוב: הוספת הלוח ליומן גוגל שלך
-            </p>
+            {calendarId ? (
+              <a
+                href={`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(calendarId)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 block rounded-xl bg-brand-purple/10 px-3 py-2 text-center text-xs font-medium text-brand-violet transition hover:bg-brand-purple/20"
+              >
+                📅 הוסיפו את לוח בית הספר ליומן גוגל שלכם
+              </a>
+            ) : (
+              <p className="mt-4 rounded-xl bg-brand-purple/10 px-3 py-2 text-xs font-medium text-brand-violet">
+                בקרוב: הוספת הלוח ליומן גוגל שלך
+              </p>
+            )}
           </aside>
         </div>
       </div>

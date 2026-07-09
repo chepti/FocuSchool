@@ -8,6 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDb } from "./firebase";
+import { fetchIcalEvents } from "./ical";
 import { demoEvents, demoSchool, demoStrips } from "./demo-data";
 import type { School, SchoolEvent, Strip, StripItem } from "./types";
 
@@ -55,6 +56,11 @@ export async function getSchoolData(schoolId = "demo"): Promise<SchoolData> {
     const events = eventsSnap.docs.map(
       (d) => ({ id: d.id, ...d.data() }) as SchoolEvent,
     );
+
+    // אירועים מיומן גוגל המחובר (אם הוגדר icalUrl בהגדרות בית הספר)
+    if (school.icalUrl) {
+      events.push(...(await fetchIcalEvents(school.icalUrl)));
+    }
 
     return { school, strips, events, source: "firestore" };
   } catch (error) {

@@ -9,6 +9,10 @@ export interface School {
   name: string;
   description: string;
   city: string;
+  /** כתובת ICS של יומן גוגל לשאיבת אירועים */
+  icalUrl?: string;
+  /** מזהה יומן ציבורי — לכפתור "הוסיפו ליומן שלכם" */
+  calendarId?: string;
 }
 
 export interface Strip {
