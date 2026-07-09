@@ -1,6 +1,6 @@
 import { Header } from "@/components/Header";
 import { StripRow } from "@/components/StripRow";
-import { EventsBoard } from "@/components/EventsBoard";
+import { EventsCalendar } from "@/components/EventsCalendar";
 import { Footer } from "@/components/Footer";
 import { demoSchool, demoStrips, demoEvents } from "@/lib/demo-data";
 
@@ -26,7 +26,7 @@ export default function HomePage() {
         {strips.map((strip) => (
           <StripRow key={strip.id} strip={strip} />
         ))}
-        <EventsBoard events={demoEvents} />
+        <EventsCalendar events={demoEvents} />
       </main>
       <Footer />
     </>

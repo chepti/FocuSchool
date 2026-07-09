@@ -35,7 +35,7 @@ function PostCard({ item }: { item: StripItem }) {
         <time className="text-xs font-medium text-brand-purple">
           {formatDate(item.date)}
         </time>
-        <h3 className="font-bold text-ink">{item.title}</h3>
+        <h3 className="font-medium text-ink">{item.title}</h3>
         <p className="text-sm leading-relaxed text-ink/70">{item.body}</p>
       </div>
     </article>
@@ -51,7 +51,7 @@ function FileCard({ item }: { item: StripItem }) {
       <span className="text-4xl" aria-hidden>
         {item.emoji}
       </span>
-      <span className="font-bold leading-snug text-ink">{item.title}</span>
+      <span className="font-medium leading-snug text-ink">{item.title}</span>
       <span className="mt-auto text-xs text-ink/50">
         {formatDate(item.date)} · PDF
       </span>
@@ -70,7 +70,7 @@ function LinkCard({ item }: { item: StripItem }) {
       <span className="text-3xl" aria-hidden>
         {item.emoji}
       </span>
-      <span className="font-bold leading-snug text-ink">{item.title}</span>
+      <span className="font-medium leading-snug text-ink">{item.title}</span>
     </a>
   );
 }
@@ -90,7 +90,7 @@ export function StripRow({ strip }: { strip: Strip }) {
   return (
     <section className="py-6">
       <div className="mx-auto max-w-6xl px-4">
-        <h2 className="mb-4 text-xl font-extrabold text-ink">
+        <h2 className="mb-4 text-xl font-medium text-ink">
           <span className="border-b-4 border-brand-pink pb-1">
             {strip.title}
           </span>
