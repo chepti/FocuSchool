@@ -1,21 +1,50 @@
 rules_version = '2';
 
-// שלב 1: קריאה ציבורית לתוכן מפורסם, אפס כתיבה מהאינטרנט.
-// כתיבה תיפתח בשלב הבא, אחרי שנוסיף התחברות והרשאות (admin/publisher/contributor).
+// קריאה ציבורית לתוכן מפורסם. כתיבה — רק לחברים לפי תפקיד:
+//   admin / publisher — פרסום ישיר, אישור ומחיקה
+//   contributor — שליחת פריטים לאישור בלבד
+// ניהול רשימת החברים עצמה נעשה כרגע רק דרך seed/קונסולה (אין כתיבה מהאתר).
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function memberRole(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/members/$(request.auth.token.email.lower())).data.role;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function isStaff(schoolId) {
+      return isSignedIn() && memberRole(schoolId) in ['admin', 'publisher'];
+    }
+
+    function isMember(schoolId) {
+      return isSignedIn() && memberRole(schoolId) in ['admin', 'publisher', 'contributor'];
+    }
+
     match /schools/{schoolId} {
       allow read: if true;
       allow write: if false;
+
+      match /members/{email} {
+        // כל חבר רואה רק את הרשומה של עצמו
+        allow read: if isSignedIn() && request.auth.token.email.lower() == email;
+        allow write: if false;
+      }
 
       match /strips/{stripId} {
         allow read: if true;
         allow write: if false;
 
         match /items/{itemId} {
-          // פריטים שממתינים לאישור לא נחשפים לציבור
-          allow read: if resource.data.status == 'published';
-          allow write: if false;
+          // פריטים בהמתנה גלויים רק לצוות
+          allow read: if resource.data.status == 'published' || isStaff(schoolId);
+          allow create: if (isStaff(schoolId)
+                            && request.resource.data.status in ['published', 'pending'])
+                        || (isMember(schoolId)
+                            && request.resource.data.status == 'pending');
+          allow update, delete: if isStaff(schoolId);
         }
       }
 

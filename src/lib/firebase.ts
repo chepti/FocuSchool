@@ -1,4 +1,5 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 // קונפיגורציה ציבורית של אפליקציית הווב — לא סוד (האבטחה נאכפת ב-Security Rules).
@@ -27,4 +28,9 @@ export function getFirebaseApp(): FirebaseApp {
 
 export function getDb(): Firestore {
   return getFirestore(getFirebaseApp());
+}
+
+/** לשימוש ברכיבי לקוח בלבד */
+export function getAuthClient(): Auth {
+  return getAuth(getFirebaseApp());
 }

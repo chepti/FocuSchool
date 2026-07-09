@@ -90,11 +90,20 @@ async function setDoc(
   console.log(`✓ ${path}`);
 }
 
+// חברי בית הספר — מזהה המסמך הוא כתובת המייל באותיות קטנות
+const members: Record<string, { role: string; name: string }> = {
+  "chepti@gmail.com": { role: "admin", name: "חפציבה" },
+};
+
 async function main() {
   const token = await getAccessToken();
   const school = `schools/${demoSchool.id}`;
 
   await setDoc(token, school, { ...demoSchool });
+
+  for (const [email, member] of Object.entries(members)) {
+    await setDoc(token, `${school}/members/${email}`, member);
+  }
 
   for (const strip of demoStrips) {
     const { items, ...meta } = strip;

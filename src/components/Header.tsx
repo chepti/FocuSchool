@@ -1,5 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { School } from "@/lib/types";
+import { AuthButton } from "./AuthButton";
 
 export function Header({ school }: { school: School }) {
   return (
@@ -19,12 +21,15 @@ export function Header({ school }: { school: School }) {
           </h1>
           <p className="text-sm text-ink/60">{school.city}</p>
         </div>
-        <a
-          href="#events"
-          className="ms-auto rounded-full bg-brand-pink px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-purple"
-        >
-          לוח אירועים
-        </a>
+        <div className="ms-auto flex items-center gap-2">
+          <Link
+            href="/#events"
+            className="rounded-full bg-brand-pink px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-purple"
+          >
+            לוח אירועים
+          </Link>
+          <AuthButton />
+        </div>
       </div>
     </header>
   );

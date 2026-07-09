@@ -32,6 +32,16 @@ export interface StripItem {
   gradient?: string;
   emoji?: string;
   date?: string; // ISO
+  /** מייל של מי שהעלה את הפריט */
+  createdBy?: string;
+}
+
+export type MemberRole = "admin" | "publisher" | "contributor";
+
+/** חבר צוות/קהילה — מזוהה לפי כתובת מייל (מזהה המסמך, באותיות קטנות) */
+export interface Member {
+  role: MemberRole;
+  name?: string;
 }
 
 export interface SchoolEvent {
