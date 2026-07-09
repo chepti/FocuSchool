@@ -2,22 +2,25 @@ import { Header } from "@/components/Header";
 import { StripRow } from "@/components/StripRow";
 import { EventsCalendar } from "@/components/EventsCalendar";
 import { Footer } from "@/components/Footer";
-import { demoSchool, demoStrips, demoEvents } from "@/lib/demo-data";
+import { getSchoolData } from "@/lib/data";
 
-export default function HomePage() {
-  const strips = [...demoStrips].sort((a, b) => a.order - b.order);
+// התוכן מתרענן מ-Firestore לכל היותר כל 5 דקות (ISR)
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const { school, strips, events } = await getSchoolData();
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "School",
-    name: demoSchool.name,
-    description: demoSchool.description,
-    address: { "@type": "PostalAddress", addressLocality: demoSchool.city },
+    name: school.name,
+    description: school.description,
+    address: { "@type": "PostalAddress", addressLocality: school.city },
   };
 
   return (
     <>
-      <Header school={demoSchool} />
+      <Header school={school} />
       <main className="flex-1 py-4">
         <script
           type="application/ld+json"
@@ -26,7 +29,7 @@ export default function HomePage() {
         {strips.map((strip) => (
           <StripRow key={strip.id} strip={strip} />
         ))}
-        <EventsCalendar events={demoEvents} />
+        <EventsCalendar events={events} />
       </main>
       <Footer />
     </>

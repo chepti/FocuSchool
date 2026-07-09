@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// שלב 1: קריאה ציבורית לתוכן מפורסם, אפס כתיבה מהאינטרנט.
+// כתיבה תיפתח בשלב הבא, אחרי שנוסיף התחברות והרשאות (admin/publisher/contributor).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /strips/{stripId} {
+        allow read: if true;
+        allow write: if false;
+
+        match /items/{itemId} {
+          // פריטים שממתינים לאישור לא נחשפים לציבור
+          allow read: if resource.data.status == 'published';
+          allow write: if false;
+        }
+      }
+
+      // הערה: כשנוסיף מידע-צוות לאירועים, הוא יישב במסמך משנה נפרד
+      // כי אין אבטחה ברמת שדה — לא להוסיף staffInfo למסמך הזה.
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+  }
+}
