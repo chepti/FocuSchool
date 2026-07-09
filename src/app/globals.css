@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  /* צבעי המותג — מתוך הלוגו */
+  --color-ink: #2f0b69;
+  --color-brand-pink: #f531a6;
+  --color-brand-purple: #aa31f5;
+  --color-brand-violet: #7818a7;
+  --color-brand-blue: #272f89;
+  --color-brand-magenta: #6f1076;
+  --color-surface: #faf8ff;
+  --color-card: #ffffff;
+
+  --font-sans: var(--font-heebo), system-ui, sans-serif;
+}
+
+/* גלילה אופקית עדינה לרצועות */
+.strip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-brand-purple) 35%, transparent)
+    transparent;
+  scroll-snap-type: x proximity;
+}
+
+.strip-scroll > * {
+  scroll-snap-align: start;
+}
