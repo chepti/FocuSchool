@@ -40,12 +40,15 @@ export interface StripItem {
   createdBy?: string;
 }
 
-export type MemberRole = "admin" | "publisher" | "contributor";
+export type MemberRole = "admin" | "publisher" | "contributor" | "parent";
 
 /** חבר צוות/קהילה — מזוהה לפי כתובת מייל (מזהה המסמך, באותיות קטנות) */
 export interface Member {
   role: MemberRole;
   name?: string;
+  /** שיוך לכיתות, למשל ["ב2", "ה1"] — בעיקר להורים */
+  classes?: string[];
+  phone?: string;
 }
 
 export interface SchoolEvent {

@@ -28,9 +28,11 @@ service cloud.firestore {
       allow write: if false;
 
       match /members/{email} {
-        // כל חבר רואה רק את הרשומה של עצמו
-        allow read: if isSignedIn() && request.auth.token.email.lower() == email;
-        allow write: if false;
+        // כל חבר רואה את הרשומה של עצמו; אדמין רואה ומנהל את כולם
+        allow read: if isSignedIn()
+                    && (request.auth.token.email.lower() == email
+                        || memberRole(schoolId) == 'admin');
+        allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
       }
 
       match /strips/{stripId} {

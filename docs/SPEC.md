@@ -1,141 +1,204 @@
 # SPEC — פוקוסקול (FocuSchool)
 
-> מסמך העבודה המרכזי. כל סשן פיתוח (בכל מודל) מתחיל בקריאת המסמך הזה.
-> עדכון אחרון: 2026-07-09. חזון מלא: [VISION.md](VISION.md) · ארכיטקטורה: [ARCHITECTURE.md](ARCHITECTURE.md)
-
-## תמצית
-
-כלי שמאפשר לבית ספר להפעיל אתר בית ספרי בקלות — זורם, כייפי, חצי־אוטומטי, מהנייד.
-Multi-tenant מהיסוד: כל הדאטה תחת `schools/{schoolId}`, כדי שבתי ספר נוספים ישוכפלו בקלות.
-
-**אילוץ־על: הכול חייב לרוץ על שכבות חינם בלבד** — Vercel Hobby + Firebase Spark.
-אסור שום שירות שדורש כרטיס אשראי או Blaze (החלטת בעלת המוצר — ראו זיכרון billing-fear).
-לכן: אין Cloud Functions (משתמשים ב־Next.js server על Vercel), אין Firebase Storage
-(קבצים/תמונות = קישורים ל־Google Drive/Photos), FCM ו־Firestore ו־Auth — כן (חינם).
+> **מסמך העבודה המרכזי של הפרויקט.** כל סשן פיתוח — בכל מודל (Fable / Opus / Sonnet) — מתחיל בקריאת המסמך הזה מתחילתו ועד סופו.
+> עדכון אחרון: 2026-07-10 · מסמכים משלימים: [VISION.md](VISION.md) (החזון המקורי כלשונו) · [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
-## תשתית — עובדות שחובה לדעת
+## 1. החלום — למה הפרויקט קיים
+
+לכל בית ספר מגיע אתר חי ונושם, אבל במציאות אין לאף אחד זמן לתחזק אותו. עדכון אתר בית ספרי הוא *עבודה* — מתישה, טכנית, תלויה באדם אחד עסוק. התוצאה: אתרים מתים, הורים מנותקים, ומידע שעובר בוואטסאפ ואובד.
+
+**פוקוסקול הופך את זה**: עדכון האתר צריך להיות זורם וכייפי כמו העלאת סטורי — מהנייד, בשלושה שדות, בדקה. וכל מה שאפשר — חצי־אוטומטי: היומן מסנכרן את עצמו, ההרשאות מזהות את עצמן לפי מייל, התוכן זורם ממי שנמצא בשטח.
+
+**החזון הרחוק:** אחרי שהמבנה מוכח על בית ספר אחד, כל בית ספר בישראל יוכל לשכפל לעצמו אתר כזה בכמה קליקים (multi-tenant), להתאים ולפרוס.
+
+## 2. עקרונות מוצר (לא מתפשרים)
+
+1. **זורם וכייפי** — כל פעולה שכיחה חייבת לעבוד מהנייד בפחות מדקה. אם צריך הדרכה — נכשלנו.
+2. **חצי־אוטומטי** — המערכת עושה את העבודה: סנכרון יומן, זיהוי לפי מייל, סטטוסים אוטומטיים. אנשים רק מזינים תוכן שהם ממילא יוצרים.
+3. **כולם תורמים, יש בקרה** — כל חבר קהילה מורשה יכול לשלוח תוכן; מי שאין לו הרשאת פרסום — התוכן ממתין לאישור. כך האתר חי בלי לאבד שליטה.
+4. **אישי מנצח כללי** — הודעה "לילד שלך חסר קלמר" עובדת; "כולם לבדוק קלמרים" נבלעת. המערכת בנויה למיקוד: לשכבה, לכיתה, להורה ספציפי.
+5. **חינם באמת** — הכול רץ על שכבות חינם (ראו אילוצים). בית ספר לא צריך תקציב כדי להתחיל.
+6. **עברית, RTL, חם** — שפת הממשק חמה וקהילתית ("מה היה לנו", "רגעים מהשטח"), לא מוסדית.
+
+## 3. קהלים ותפקידים
+
+| תפקיד | מי | מה רואה/עושה |
+|---|---|---|
+| אנונימי | כל העולם, גוגל | האתר הציבורי: רצועות מפורסמות, לוח אירועים (חלק ציבורי בלבד) |
+| `parent` | הורה שהמייל שלו ברשימה | הכול + מערכת שעות, אלפון מורים, תמונות מוגנות, הודעות, צ'קליסטים של ילדיו |
+| `contributor` | הורה/איש צוות שתורם תוכן | שולח פריטים → ממתינים לאישור |
+| `publisher` | מורים, רכזים | פרסום ישיר, אישור פריטים ממתינים |
+| `admin` | מנהל/ת האתר | הכול + ניהול חברים, הגדרות בית הספר |
+| `committee` (עתידי) | ועד הורים | פרסום החלטות, אירועי כיתה, סקרים, סימון דמי ועד |
+
+הזיהוי תמיד לפי **מייל בהתחברות גוגל** מול מסמך `members/{email-lowercase}`. אפס ניהול סיסמאות.
+
+## 4. אילוצים מחייבים
+
+- **רק שכבות חינם:** Vercel Hobby + Firebase Spark. שום שירות שדורש כרטיס אשראי או Blaze (החלטת בעלת המוצר — חשש מחיובים פתוחים; ראו זיכרון billing-fear).
+  - אין Cloud Functions → לוגיקת שרת ב-Next.js על Vercel (כולל Vercel Cron בחינם).
+  - אין Firebase Storage (דורש Blaze בפרויקטים חדשים) → קבצים ותמונות = קישורים ל-Google Drive/Photos.
+  - Firestore, Auth, FCM — חינם ומותרים.
+- **Windows עם שם משתמש בעברית** אצל בעלת המוצר — ראו טריקים בסעיף 6.
+- SEO אמיתי → הדף הציבורי חייב להישאר SSR/ISR (לא client-only).
+
+## 5. מצב נוכחי — מה בנוי ועובד (2026-07-10)
+
+**שלב 1 (MVP האתר הציבורי) הושלם ובאוויר** ב-https://focuschool.chepti.com עם בית ספר דמו ("בית ספר אופק"):
+
+- דף בית עם רצועות תוכן נגללות אופקית (פוסטים, קבצים, תמונות, קישורים) מ-Firestore, עם fallback אוטומטי לנתוני דמו אם הדאטהבייס לא זמין. ISR כל 5 דקות.
+- לוח אירועים חודשי: תאריך עברי (גימטריה עצמית — Intl לא ממיר מספרים), מתג חיתוך חודש עברי/לועזי, פאנל פירוט צדדי, תגיות שכבה.
+- סנכרון יומן גוגל דרך ICS + כפתור "הוסיפו ליומן שלכם" (מותנה בשדות icalUrl/calendarId במסמך בית הספר — **טרם הוגדרו בדמו, ממתין ליומן אמיתי**).
+- התחברות גוגל, תפקידים, `/add` (הוספה מהנייד לפי הרשאה), `/manage` (תור אישורים).
+- SEO: JSON-LD, sitemap, robots, canonical, metadataBase. PWA manifest (התקנה למסך הבית).
+- פביקון ממסגרת הפוקוס של הלוגו. פונט Fredoka. עיצוב לפי צבעי הלוגו.
+
+**עבודה שנעצרה באמצע (להשלים בסשן הבא!):** מודול רשימת הורים —
+`types.ts` (role parent + classes/phone), `firestore.rules` (אדמין מנהל members), `AuthButton.tsx` (הורה לא רואה "+ הוספה") — **כבר נערכו ולא קומטו**. חסר: מסך `/members` (מפרט בסעיף 10, מודול 2.1) ופריסת ה-rules המעודכנים.
+
+### מפת קבצים
+
+```
+src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/,
+                    icon.svg, manifest.ts, sitemap.ts, robots.ts
+src/components/     Header, AuthButton, StripRow, EventsCalendar, Footer
+src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
+                    demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook)
+scripts/seed.ts     זריעת דמו + members (npm run seed)
+firestore.rules     חוקי אבטחה (נפרסים עם firebase deploy --only firestore:rules)
+docs/               SPEC.md (זה), VISION.md, ARCHITECTURE.md
+```
+
+## 6. תשתית ועובדות טכניות
 
 | דבר | ערך |
 |---|---|
-| ריפו | https://github.com/chepti/FocuSchool (branch `main`) |
+| ריפו | https://github.com/chepti/FocuSchool · branch `main` |
 | פרודקשן | https://focuschool.chepti.com (וגם focuschool.vercel.app) |
-| Vercel | פרויקט `cheptis-projects/focuschool`, פריסה אוטומטית מכל push ל-main |
-| Firebase project | `focuschool-aa45d` |
-| Firestore | database `(default)`, region `me-west1` (תל אביב) |
-| Web app id | `1:832652546416:web:b64b5d508a88168429bfb5` |
-| קונפיג פיירבייס | מוטמע בקוד ב-`src/lib/firebase.ts` (ציבורי, לא סוד; env יכול לעקוף) |
+| Vercel | פרויקט `cheptis-projects/focuschool`, אוטו-דיפלוי מכל push ל-main |
+| Firebase | פרויקט `focuschool-aa45d`, Firestore `(default)` באזור `me-west1` (ת"א) |
+| Web app | `1:832652546416:web:b64b5d508a88168429bfb5` |
+| קונפיג | מוטמע ב-`src/lib/firebase.ts` (ציבורי — לא סוד; env עוקף) |
+| סטאק | Next.js 16 App Router · TypeScript · Tailwind v4 · firebase JS SDK |
 
-### CLI וטריקים (Windows, שם משתמש בעברית!)
+### טריקים ומוקשים (חובה לקרוא!)
 
-- `firebase` CLI מחובר כ-chepti@gmail.com. עובד רגיל.
-- `vercel` CLI מחובר, אבל **חובה** תמיד: `vercel --global-config "T:\CURSOR2\.vercel-cli" <cmd>`
-  (שם המשתמש בעברית שובר את תיקיית הקונפיג הרגילה — שגיאת EXDEV).
-- זריעת דאטה: `npm run seed` (scripts/seed.ts). משתמש ב-refresh token של firebase-tools
-  מ-`~/.config/configstore/firebase-tools.json` וכותב דרך Firestore REST (עוקף rules ברמת IAM).
-  באותה שיטה אפשר להפעיל APIs (serviceusage) ולערוך הגדרות Auth (identitytoolkit) — כבר נעשה.
-- פריסת rules: `firebase deploy --only firestore:rules`
-- דומיינים מורשים ל-Auth כבר כוללים: localhost, vercel.app, chepti.com.
+- **vercel CLI:** תמיד `vercel --global-config "T:\CURSOR2\.vercel-cli" <cmd>` — שם המשתמש בעברית שובר את ברירת המחדל (EXDEV).
+- **firebase CLI** מחובר (chepti@gmail.com). פעולות שאין להן פקודת CLI (הפעלת API, דומיינים מורשים ל-Auth) נעשות ב-REST עם ה-refresh token מ-`~/.config/configstore/firebase-tools.json` (ה-client_id/secret של firebase-tools ציבוריים) — כך נוצר הדאטהבייס והתווספו focuschool.vercel.app + focuschool.chepti.com לדומיינים המורשים.
+- **זריעה:** `npm run seed` — כותב דרך Firestore REST (IAM, עוקף rules).
+- **Compress-Archive אסור** (הנחיה גלובלית) — זיפים רק דרך .NET עם נתיבי `/`.
+- הדף הראשי static/ISR — שינוי ב-Firestore מופיע תוך עד 5 דקות בפרודקשן.
 
-### תהליך עבודה מחייב
+### תהליך עבודה מחייב לכל סשן
 
-1. אחרי כל שינוי: `npm run build` נקי → commit → `git push origin main` (זו הפריסה).
-2. בדיקות מקומיות: שרת dev דרך `.claude/launch.json` (שם: focuschool-dev, פורט 3000).
-3. עיצוב: עברית, RTL, פונט Fredoka (משקל 500 לכותרות), צבעי המותג ב-globals.css
-   (ink #2f0b69, pink #f531a6, purple #aa31f5, violet #7818a7, blue #272f89, magenta #6f1076).
-   שפה חמה וכייפית ("מה היה לנו", "רגעים מהשטח"), פינות מעוגלות rounded-2xl.
+1. לקרוא SPEC.md (זה). 2. לבדוק `git status` — אולי נשארה עבודה באמצע.
+3. אחרי כל שינוי: `npm run build` נקי → commit עם הודעה תמציתית → `git push origin main` (= פריסה).
+4. לבדוק בפועל בדפדפן (יש `.claude/launch.json`, שרת focuschool-dev, פורט 3000).
+5. שינוי rules → `firebase deploy --only firestore:rules`. שינוי דאטה-דמו → `npm run seed`.
+6. בסוף סשן: לעדכן את סעיף "מצב נוכחי" במסמך הזה.
+
+## 7. מודל נתונים (Firestore)
+
+מבנה קיים (✅) ומתוכנן (🔜). הכול תחת `schools/{schoolId}` — לעולם לא לשטח!
+
+```
+schools/{schoolId} ✅            name, description, city, icalUrl?, calendarId?
+  members/{email-lowercase} ✅   role: admin|publisher|contributor|parent,
+                                 name?, classes?: ["ב2"], phone?
+  strips/{stripId} ✅            type: photos|files|posts|links, title, order, visible
+    items/{itemId} ✅            status: pending|published, title, body?, url?, emoji?,
+                                 gradient?, date (ISO), createdBy
+  events/{eventId} ✅            title, date (ISO), grades: [], publicInfo
+                                 ⚠️ אסור staffInfo כאן (אין אבטחת שדה) — מסמך משנה בעתיד
+  classes/{classId} 🔜           name ("ב2"), grade ("ב")
+  schedules/{classId} 🔜         days: 6 ימים × עד 8 שיעורים של {subject, teacher}
+  staff/{staffId} 🔜             אלפון: name, subjects[], classes[], email?, phone?
+  messages/{messageId} 🔜        type: weekly|reminder|targeted, לפי מודול 3
+  checklists/{checklistId} 🔜    לפי מודול 3.2
+  signups/{signupId} 🔜          לפי מודול 3.5
+  polls/{pollId} 🔜              לפי מודול 4
+```
+
+## 8. אבטחה — עקרונות ה-rules
+
+- ציבור: קריאה בלבד, ורק תוכן `published`. שום כתיבה אנונימית, לעולם.
+- זיהוי: `request.auth.token.email.lower()` מול מזהה מסמך member.
+- `contributor` יוצר items רק עם `status == 'pending'`. צוות (`admin`/`publisher`) — הכול על items.
+- members: כל אחד קורא את עצמו; אדמין קורא ומנהל את כולם (נכון לגרסה בעבודה).
+- מידע רגיש להורים בלבד (טלפונים, אלבומים) — לעולם במסמכים שנשלפים רק אחרי בדיקת role, לא בשדות של מסמכים ציבוריים.
+- אין secrets בריפו. קונפיג פיירבייס הציבורי — כן מותר בקוד.
+
+## 9. קונבנציות
+
+### יומן גוגל (המזכירה עובדת ביומן הרגיל שלה — האתר שואב)
+
+- `icalUrl` במסמך בית הספר = כתובת ICS (עדיף Secret address) → נשאב ב-SSR, קאש 5 דק'.
+- שכבות בכותרת האירוע: `טיול שנתי [ה,ו]` · `[כולם]` או בלי תגית = כל ביה"ס. התגית מוסרת בתצוגה.
+- מידע צוות בתיאור: כל מה שאחרי שורת `---צוות---` לא מוצג לציבור (בעתיד: יוצג לצוות מחובר).
+- שעה מתווספת אוטומטית לתצוגה ("🕐 18:30 ·"). אירועי RRULE — עדיין לא נתמכים (backlog).
+
+### עיצוב
+
+- פונט **Fredoka** (תומך עברית), כותרות במשקל 500 (כמו הלוגו) — `font-medium`.
+- צבעים (ב-globals.css): ink `#2f0b69` · pink `#f531a6` · purple `#aa31f5` · violet `#7818a7` · blue `#272f89` · magenta `#6f1076` · surface `#faf8ff`.
+- פינות `rounded-2xl`, צל עדין, תגיות pill. מובייל-קודם תמיד. אימוג'י כתחליף תמונות עד שיהיו קישורי Photos.
 
 ---
 
-## מודל נתונים (Firestore)
+## 10. מפרט מודולים — הדרך מכאן
 
-```
-schools/{schoolId}                    # name, description, city, icalUrl?, calendarId?
-  members/{email-lowercase}           # role: admin|publisher|contributor (בעתיד: parent), name
-                                      # בעתיד להורה: classes: ["ב2"], phone
-  strips/{stripId}                    # type: photos|files|posts|links, title, order, visible
-    items/{itemId}                    # status: pending|published, title, body?, url?,
-                                      # emoji?, gradient?, date (ISO), createdBy
-  events/{eventId}                    # title, date (ISO), grades: [], publicInfo
-                                      # אסור staffInfo כאן (אין אבטחת שדות) — מסמך משנה בעתיד
-  ---- מתוכנן (שלב 2+) ----
-  classes/{classId}                   # name ("ב2"), grade ("ב")
-  schedules/{classId}                 # מערכת שעות: days[6][8] של {subject, teacher}
-  staff/{staffId}                     # אלפון מורים: name, subjects, classes, email?, phone?
-  messages/{messageId}                # type: weekly|reminder|targeted, to: {grades?/classes?/emails?},
-                                      # body, sendAt?, createdBy
-  checklists/{checklistId}            # title, classId, items: [{studentEmailKey, parentDone, teacherDone}]
-  signups/{signupId}                  # eventId, slots: [{label, max, takenBy: []}]
-  polls/{pollId}                      # question, options, votes (שלב 4)
-```
+לכל מודול: מטרה, זרימה, דאטה, וקריטריון קבלה (DoD). לבנות לפי הסדר.
 
-## תפקידים והרשאות (rules — כבר פרוס)
+### שלב 2 — הורים מזוהים
 
-- אנונימי: קריאת תוכן מפורסם בלבד (items רק status==published).
-- `contributor`: יצירת item עם status=pending בלבד.
-- `publisher`/`admin`: יצירה עם published/pending, עדכון, מחיקה, רואים pending.
-- חבר רואה את רשומת ה-member של עצמו בלבד. כתיבת members — רק seed/console כרגע.
-- זיהוי לפי `request.auth.token.email.lower()` == מזהה מסמך ה-member.
+**2.1 רשימת הורים (`/members`) — הבא בתור, חצי עשוי!**
+מטרה: האדמין מדביק רשימה מאקסל ⇐ הורים מזוהים אוטומטית בהתחברות.
+זרימה: מסך אדמין עם textarea · פורמט שורה: `שם, מייל, כיתות (מופרדות ברווח), טלפון` (גם TAB מאקסל) · תצוגה מקדימה של השורות שפוענחו + שגויות · כפתור שמירה → writeBatch ל-members עם role=parent · מיילים שכבר קיימים — מדולגים (לא לדרוס admin!) · מתחת: טבלת החברים הקיימים עם תפקיד וכיתות.
+DoD: הדבקה של 30 שורות נשמרת; הורה מהרשימה שמתחבר רואה סטטוס מזוהה; לא ניתן לדרוס את האדמין; rules פרוסים.
 
-## קונבנציות יומן גוגל (מודול הסנכרון)
+**2.2 אזור אישי להורה בדף הבית**
+הורה מחובר רואה סקשן "שלום {שם}" עם: האירועים של הכיתות/שכבות שלו מודגשים, מערכת השעות של כיתותיו (`schedules/{classId}`), ואלפון המורים המלמדים בכיתות שלו (`staff` מסונן לפי classes). מורה ניתן ליצירת קשר במייל (mailto) — העדפות digest בשלב 3.
+DoD: הורה של ב2 רואה מערכת שעות ואלפון של ב2 בלבד; אנונימי לא רואה כלום מזה.
 
-- בית הספר שם ביומן, והמזכירה עובדת רגיל ביומן גוגל — האתר שואב.
-- `schools/{id}.icalUrl` = כתובת ICS (Secret address או ציבורית) → נשאב ב-SSR עם קאש 5 דקות.
-- `schools/{id}.calendarId` = מזהה יומן ציבורי → כפתור "הוסיפו ליומן שלכם".
-- **שכבות:** בכותרת האירוע `[א,ב]` או `[כולם]` (ברירת מחדל: כולם). התגית מוסרת מהכותרת בתצוגה.
-- **מידע צוות:** בתיאור האירוע, כל מה שאחרי שורת `---צוות---` הוא לצוות בלבד
-  (בשלב זה פשוט לא מוצג באתר; בשלב 2 יוצג למורים מחוברים).
-- אירועים חוזרים (RRULE) — לא נתמכים עדיין (backlog).
+**2.3 תמונות מוגנות**
+פריט ברצועת תמונות יכול לשאת קישור לאלבום Google Photos במסמך משנה `items/{id}/private/parents` (שדה albumUrl). rules: קריאת private רק ל-role=parent ומעלה. UI: להורה מחובר הכרטיס הופך קליקבילי עם 🔒 שנפתח.
+DoD: אנונימי רואה כרטיס בלי קישור; הורה מחובר פותח את האלבום.
 
----
-
-## מפת מודולים ושלבים
-
-### שלב 1 — MVP האתר הציבורי — ✅ הושלם (2026-07-09)
-
-- [x] רצועות תוכן נגללות (פוסטים/קבצים/תמונות/קישורים) מ-Firestore עם fallback לדמו
-- [x] הוספת פריט מהנייד (/add) לפי תפקיד, זרימת אישור (/manage)
-- [x] התחברות Google, member roles, security rules
-- [x] לוח אירועים חודשי: תאריך עברי (גימטריה ב-src/lib/hebrew-date.ts), מתג חיתוך חודש עברי/לועזי, פאנל פירוט
-- [x] סנכרון יומן גוגל דרך ICS (src/lib/ical.ts) + כפתור הוספה ליומן
-- [x] SEO: SSR/ISR, JSON-LD, sitemap, robots, canonical
-- [x] PWA בסיסי: manifest (התקנה למסך הבית; נוטיפיקציות בשלב 2)
-- [x] פביקון ממסגרת הפוקוס של הלוגו (src/app/icon.svg)
-
-### שלב 2 — הורים מזוהים (הבא בתור)
-
-1. **רשימת הורים:** מסך אדמין להדבקת CSV (שם, מייל, טלפון, כיתות) → נכתב ל-members עם role=parent.
-   חלופה זולה: זריעה מקובץ. חשוב: מייל = מזהה, lowercase.
-2. **תצוגת הורה:** הורה מחובר רואה בדף הבית גם: מערכת שעות של הכיתות שלו,
-   אלפון מורים של הכיתה (schools/{id}/staff מסונן), קישורי אלבומי תמונות מוגנים
-   (שדה protectedUrl ב-items של רצועת תמונות — נשלף רק אם ההורה מחובר; rules: קריאת השדה
-   דרך מסמך משנה items/{id}/private/parent או רצועה נפרדת visible=parents).
-3. **PWA push:** FCM Web Push (חינם). service worker + בקשת הרשאה + טוקנים ב-members/{email}/tokens.
-   שליחה: route ב-Next (App Route) עם FCM HTTP v1 — דורש service account JSON ב-env של Vercel (חינם, לא Blaze).
-4. **rules:** role=parent — קריאה בלבד של schedules/staff/protected, לא כתיבת items.
+**2.4 PWA push (נוטיפיקציות)**
+FCM Web Push (חינם ב-Spark): service worker + בקשת הרשאה ("קבלו עדכונים מבית הספר") + שמירת טוקנים ב-`members/{email}/tokens/{token}`. שליחה: App Route בשרת עם FCM HTTP v1 — דורש service account JSON כ-env ב-Vercel (חינם; **לא** דורש Blaze). שליחת מבחן מ-`/manage`.
+DoD: אדמין שולח הודעת בדיקה ומקבל אותה בנייד מותקן.
 
 ### שלב 3 — תקשורת ומעקב
 
-1. **עדכון שבועי של מחנך:** messages type=weekly משויך לכיתה; מוצג להורי הכיתה + נשלח push.
-2. **צ'קליסטים / שיעורי בית:** checklist לכיתה עם סימון כפול (הורה מסמן, מורה מסמן) —
-   לתלמידים במעקב. UI: מסך למורה, שורה להורה בדף שלו.
-3. **הודעות ממוקדות:** המורה בוחר תלמידים (בדיקת קלמרים) → הודעה רק להורים שלהם.
-4. **תזכורות מתוזמנות:** messages עם sendAt עתידי. ללא Cloud Functions: Vercel Cron (חינם, פעם ביום)
-   או בדיקה בזמן טעינה + push בעת ההגעה. להתחיל ב-Vercel Cron יומי.
-5. **רשימות כיבוד:** signups עם slots ומגבלת כמות; הורה משתבץ, אכיפת max בטרנזקציה.
+**3.1 עדכון שבועי של מחנך** — מסך למורה: בחירת כיתה + טקסט חופשי + "מה ניתן כשיעורי בית" → `messages` type=weekly → מוצג באזור האישי של הורי הכיתה + push. DoD: הורה רואה את העדכון האחרון של כל כיתה שלו.
+
+**3.2 צ'קליסטים / שיעורי בית במעקב** — מורה יוצר checklist לכיתה, בוחר תלמידים במעקב מיוחד (לפי member של ההורה). לכל פריט סימון כפול: ההורה מסמן בוצע-בבית, המורה מסמן בוצע-בכיתה. משמש גם לתוכניות התערבות התנהגותיות. DoD: שני הצדדים מסמנים ורואים זה את זה בזמן אמת.
+
+**3.3 הודעות ממוקדות ("בדיקת קלמרים")** — מורה בוחר כיתה → מסמן ידנית תת-קבוצת הורים → כותב הודעה אחת → נשלחת רק להם (push + באזור האישי). *העיקרון: אישי מנצח כללי.* DoD: רק ההורים המסומנים מקבלים.
+
+**3.4 תזכורות מתוזמנות** — "להביא גלילים לאמנות ביום ג'": message עם sendAt עתידי + יעד (כיתה/שכבה). מנגנון: Vercel Cron יומי (חינם) שמריץ route השולח את מה שהגיע זמנו. DoD: תזכורת שנקבעה אתמול נשלחת היום בשעה.
+
+**3.5 רשימות כיבוד/שיבוץ** — לאירוע: slots עם מכסות (`3 × מגש פירות`, `4 × שתייה`). הורה בוחר משבצת; אכיפת מקסימום בטרנזקציה; רואים מי הביא מה. משמש גם לאישורי הגעה. DoD: משבצת מלאה ננעלת; אין דריסה במקביל.
+
+**3.6 פניות עם digest** — פנייה למנהל/מורה/ועד/מזכירות; הנמען בוחר העדפה: מיידי / סיכום יומי / שבועי (נשלח ע"י ה-Cron). DoD: נמען עם העדפה יומית מקבל מייל/push אחד ביום.
 
 ### שלב 4 — ועד הורים + שכפול
 
-- מבנה ארגוני, החלטות ועד (רצועה ייעודית), סימון דמי ועד (רשומת member),
-  אירועי כיתה עם אישורי הגעה (signups), סקרים (polls).
-- **שכפול:** מסך יצירת בית ספר חדש → מסמך school + strips ברירת מחדל + admin ראשון.
-  routing: דומיין/סאב-דומיין לכל בית ספר או path /s/{schoolId} (להחליט).
+- מבנה ארגוני ("מי אנחנו"), החלטות ועד (רצועה ייעודית), role=committee.
+- סימון דמי ועד ששולמו (שדה ב-member, גלוי לוועד בלבד).
+- אירועי כיתה מהוועד (יום הולדת + אישורי הגעה = signups) וסקרים/הצבעות (polls).
+- **שכפול:** מסך יצירת בית ספר: שם + עיר + מייל אדמין → נוצרים school + strips ברירת מחדל + member ראשון. routing לפי סאב-דומיין או `/s/{schoolId}` (להחליט אז). onboarding מודרך: חיבור יומן, הדבקת רשימת הורים, פריט ראשון.
 
-## backlog קטן
+## 11. מדדי הצלחה
 
-- אימוג'י → תמונות אמיתיות ברצועת תמונות (קישורי Photos)
-- דף 404 ממותג, עמוד "אודות" לבית ספר
-- RRULE ביומן, אירועים מרובי-ימים
-- העלאת favicon.ico/PNG לדפדפנים ישנים
-- בדיקת נגישות (a11y) מלאה — חשוב לאתר ציבורי של בי"ס
+- זמן הוספת פריט מהנייד < 60 שניות מפתיחת האתר עד פרסום.
+- בית הספר מעדכן ≥ 3 פריטים בשבוע בלי תזכורות מאיתנו.
+- ≥ 50% מההורים ברשימה התחברו לפחות פעם אחת תוך חודש.
+- עלות תפעול חודשית: **0 ₪**.
+- בית ספר שני עולה לאוויר בפחות משעה (שלב 4).
+
+## 12. Backlog קטן
+
+תמונות אמיתיות ברצועות (קישורי Photos) · דף 404 ממותג · עמוד "אודות" · RRULE ואירועים מרובי-ימים · favicon.ico/PNG לדפדפנים ישנים · בדיקת נגישות מלאה (חשוב לאתר ציבורי!) · העדפת שפה שנייה (ערבית/אנגלית) בעתיד הרחוק · מיגרציה מ-refresh-token-trick ל-service account מסודר לסקריפטים.
