@@ -61,18 +61,20 @@
 - **2.2 אזור אישי** — `ParentZone` בדף הבית (client): "שלום {שם}", אירועים קרובים של השכבות שלו, מערכת שעות לכל כיתה (`schedules/{classId}`, ימים כמפות `{lessons: []}` — אין מערך במערך ב-Firestore!), אלפון מורים מסונן ב-array-contains-any עם mailto. מוצג לכל member עם classes (גם לאדמין — לצורכי בדיקה chepti קיבלה בזריעה classes=["ב2"]).
 - **2.3 תמונות מוגנות** — `items/{id}/private/parents` עם albumUrl; `PhotosRow` (client) שולף לחברים מחוברים והכרטיס נהיה קליקבילי עם 🔓. בדמו: ph1.
 - rules: פונקציית isCommunity (כולל parent) ל-schedules/staff/private; כתיבה — admin (staff לתוכן private).
-- **נבדק אנונימית בלבד** (דפדפן ללא התחברות): הדף הציבורי נקי, `/members` חסום, אין קונסול-שגיאות. **זרימות מחובר טרם נבדקו ידנית** — לבדוק בפרודקשן עם חשבון האדמין.
-- נותר בשלב 2: **2.4 PWA push** — דורש service account JSON כ-env ב-Vercel ומפתח VAPID (יצירה בקונסולת Firebase → Cloud Messaging → Web Push certificates).
+- **2.4 PWA push בנוי** — `public/firebase-messaging-sw.js` (compat 12.15.0), `src/lib/push.ts` (הרשמה: הרשאה→getToken→שמירה ב-members/{email}/tokens/{token}), `PushButton` באזור האישי, ו-`/api/push` (POST): אימות ID token מול identitytoolkit, בדיקת staff, OAuth של service account ב-JWT חתום ידנית (בלי firebase-admin), איסוף כל הטוקנים (עד 300 חברים), שליחה ב-FCM HTTP v1 וניקוי טוקנים מתים. UI שליחה ב-`/manage`. **envs ב-Vercel (הוגדרו ע"י בעלת המוצר): FIREBASE_SERVICE_ACCOUNT (ה-JSON), NEXT_PUBLIC_FCM_VAPID_KEY** — בלוקאל אין אותם, לכן `/api/push` יחזיר 500 ובכפתור ההרשמה "לא נתמך".
+- **נבדק אנונימית בלבד** (דפדפן ללא התחברות): הדף הציבורי נקי, `/members` חסום, `/api/push` בלי אימות מחזיר 401, ה-SW מוגש. **זרימות מחובר + קבלת push בפועל טרם נבדקו** — לבדוק בפרודקשן עם חשבון האדמין (DoD 2.4: שליחת בדיקה מ-`/manage` מתקבלת בנייד).
 
 ### מפת קבצים
 
 ```
 src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/, members/,
-                    icon.svg, manifest.ts, sitemap.ts, robots.ts
+                    api/push/ (שליחת FCM), icon.svg, manifest.ts, sitemap.ts, robots.ts
 src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
-                    ParentZone (אזור אישי), EventsCalendar, Footer
+                    ParentZone (אזור אישי), PushButton, EventsCalendar, Footer
 src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
-                    demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook)
+                    demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook),
+                    push (הרשמה לנוטיפיקציות)
+public/firebase-messaging-sw.js   service worker לקבלת push ברקע
 scripts/seed.ts     זריעת דמו + members + schedules/staff/private (npm run seed)
 firestore.rules     חוקי אבטחה (נפרסים עם firebase deploy --only firestore:rules)
 docs/               SPEC.md (זה), VISION.md, ARCHITECTURE.md

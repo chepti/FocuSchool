@@ -39,6 +39,13 @@ service cloud.firestore {
                     && (request.auth.token.email.lower() == email
                         || memberRole(schoolId) == 'admin');
         allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
+
+        // טוקני נוטיפיקציות — כל חבר מנהל רק את של עצמו.
+        // השליחה נעשית בשרת עם service account (עוקף rules).
+        match /tokens/{tokenId} {
+          allow read, write: if isSignedIn()
+                             && request.auth.token.email.lower() == email;
+        }
       }
 
       match /strips/{stripId} {

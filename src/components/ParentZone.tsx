@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
+import { PushButton } from "./PushButton";
 import type { ClassSchedule, SchoolEvent, StaffMember } from "@/lib/types";
 import { hebrewDayMonthLabel } from "@/lib/hebrew-date";
 
@@ -26,7 +27,7 @@ export function ParentZone({
   events: SchoolEvent[];
   schoolId?: string;
 }) {
-  const { member } = useMember(schoolId);
+  const { user, member } = useMember(schoolId);
   const [schedules, setSchedules] = useState<ClassWithSchedule[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [openClass, setOpenClass] = useState<string | null>(null);
@@ -100,6 +101,12 @@ export function ParentZone({
           <p className="text-sm text-ink/60">
             הכיתות שלך: {classes.join(" · ")}
           </p>
+        )}
+
+        {user?.email && (
+          <div className="mt-3">
+            <PushButton schoolId={schoolId} email={user.email} />
+          </div>
         )}
 
         {myEvents.length > 0 && (

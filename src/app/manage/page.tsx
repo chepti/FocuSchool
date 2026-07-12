@@ -27,8 +27,45 @@ export default function ManagePage() {
   const [items, setItems] = useState<PendingItem[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const staff = isStaff(member);
+
+  async function sendPush() {
+    if (!user || !pushTitle.trim()) return;
+    setPushBusy(true);
+    setPushStatus(null);
+    try {
+      const res = await fetch("/api/push", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title: pushTitle, body: pushBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPushStatus(`שגיאה: ${data.error ?? res.status}`);
+      } else if (data.devices === 0) {
+        setPushStatus("אין עדיין מכשירים רשומים — הירשמו קודם דרך דף הבית");
+      } else {
+        setPushStatus(
+          `נשלח ל-${data.sent} מתוך ${data.devices} מכשירים` +
+            (data.failed ? ` (${data.failed} נכשלו)` : ""),
+        );
+        setPushTitle("");
+        setPushBody("");
+      }
+    } catch {
+      setPushStatus("שגיאה בשליחה");
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   const load = useCallback(async () => {
     const db = getDb();
@@ -169,6 +206,44 @@ export default function ManagePage() {
           </ul>
         )}
       </div>
+
+      {staff && (
+        <div className="mt-6 rounded-2xl bg-card p-6 shadow-sm ring-1 ring-ink/5">
+          <h2 className="mb-1 text-xl font-medium text-ink">
+            שליחת נוטיפיקציה 🔔
+          </h2>
+          <p className="mb-4 text-sm text-ink/60">
+            נשלחת לכל המכשירים שנרשמו לעדכונים (כפתור 🔔 בדף הבית).
+          </p>
+          <div className="flex flex-col gap-2">
+            <input
+              value={pushTitle}
+              onChange={(e) => setPushTitle(e.target.value)}
+              placeholder="כותרת (חובה)"
+              className="rounded-xl bg-surface p-3 text-sm text-ink ring-1 ring-ink/10 focus:outline-none focus:ring-brand-purple"
+            />
+            <input
+              value={pushBody}
+              onChange={(e) => setPushBody(e.target.value)}
+              placeholder="תוכן ההודעה"
+              className="rounded-xl bg-surface p-3 text-sm text-ink ring-1 ring-ink/10 focus:outline-none focus:ring-brand-purple"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={pushBusy || !pushTitle.trim()}
+                onClick={sendPush}
+                className="rounded-full bg-brand-pink px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-purple disabled:opacity-50"
+              >
+                {pushBusy ? "שולח…" : "שליחה לכולם"}
+              </button>
+              {pushStatus && (
+                <span className="text-sm text-ink/70">{pushStatus}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
