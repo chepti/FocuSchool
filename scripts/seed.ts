@@ -6,7 +6,14 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { demoEvents, demoSchool, demoStrips } from "../src/lib/demo-data";
+import {
+  demoEvents,
+  demoPrivateAlbums,
+  demoSchedules,
+  demoSchool,
+  demoStaff,
+  demoStrips,
+} from "../src/lib/demo-data";
 
 const PROJECT_ID = "focuschool-aa45d";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -90,9 +97,13 @@ async function setDoc(
   console.log(`✓ ${path}`);
 }
 
-// חברי בית הספר — מזהה המסמך הוא כתובת המייל באותיות קטנות
-const members: Record<string, { role: string; name: string }> = {
-  "chepti@gmail.com": { role: "admin", name: "חפציבה" },
+// חברי בית הספר — מזהה המסמך הוא כתובת המייל באותיות קטנות.
+// לאדמין יש כיתה כדי שתוכל לראות ולבדוק את האזור האישי של הורה.
+const members: Record<
+  string,
+  { role: string; name: string; classes?: string[] }
+> = {
+  "chepti@gmail.com": { role: "admin", name: "חפציבה", classes: ["ב2"] },
 };
 
 async function main() {
@@ -117,6 +128,23 @@ async function main() {
 
   for (const event of demoEvents) {
     await setDoc(token, `${school}/events/${event.id}`, { ...event });
+  }
+
+  for (const [classId, schedule] of Object.entries(demoSchedules)) {
+    await setDoc(token, `${school}/schedules/${classId}`, { ...schedule });
+  }
+
+  for (const teacher of demoStaff) {
+    await setDoc(token, `${school}/staff/${teacher.id}`, { ...teacher });
+  }
+
+  // קישורי אלבום מוגנים — במסמך משנה שנקרא רק אחרי בדיקת role
+  for (const [itemId, albumUrl] of Object.entries(demoPrivateAlbums)) {
+    await setDoc(
+      token,
+      `${school}/strips/photos/items/${itemId}/private/parents`,
+      { albumUrl },
+    );
   }
 
   console.log("\nהזריעה הושלמה בהצלחה 🎉");

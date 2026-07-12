@@ -1,4 +1,5 @@
 import type { Strip, StripItem } from "@/lib/types";
+import { PhotosRow } from "./PhotosRow";
 
 function formatDate(iso?: string) {
   if (!iso) return null;
@@ -6,21 +7,6 @@ function formatDate(iso?: string) {
     day: "numeric",
     month: "long",
   });
-}
-
-function PhotoCard({ item }: { item: StripItem }) {
-  return (
-    <figure className="w-64 shrink-0">
-      <div
-        className={`flex h-44 items-center justify-center rounded-2xl bg-gradient-to-bl ${item.gradient} text-6xl shadow-sm`}
-      >
-        <span aria-hidden>{item.emoji}</span>
-      </div>
-      <figcaption className="mt-2 px-1 text-sm font-medium text-ink/80">
-        {item.title}
-      </figcaption>
-    </figure>
-  );
 }
 
 function PostCard({ item }: { item: StripItem }) {
@@ -76,14 +62,12 @@ function LinkCard({ item }: { item: StripItem }) {
 }
 
 const cardByType = {
-  photos: PhotoCard,
   posts: PostCard,
   files: FileCard,
   links: LinkCard,
 } as const;
 
 export function StripRow({ strip }: { strip: Strip }) {
-  const Card = cardByType[strip.type];
   const items = strip.items.filter((i) => i.status === "published");
   if (!strip.visible || items.length === 0) return null;
 
@@ -97,9 +81,14 @@ export function StripRow({ strip }: { strip: Strip }) {
         </h2>
       </div>
       <div className="strip-scroll flex gap-4 overflow-x-auto px-[max(1rem,calc((100%-72rem)/2+1rem))] pb-4">
-        {items.map((item) => (
-          <Card key={item.id} item={item} />
-        ))}
+        {strip.type === "photos" ? (
+          <PhotosRow stripId={strip.id} items={items} />
+        ) : (
+          items.map((item) => {
+            const Card = cardByType[strip.type as keyof typeof cardByType];
+            return <Card key={item.id} item={item} />;
+          })
+        )}
       </div>
     </section>
   );

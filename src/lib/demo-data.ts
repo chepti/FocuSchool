@@ -1,4 +1,10 @@
-import type { School, SchoolEvent, Strip } from "./types";
+import type {
+  ClassSchedule,
+  School,
+  SchoolEvent,
+  StaffMember,
+  Strip,
+} from "./types";
 
 // בית ספר דמו — בהמשך הנתונים יגיעו מ-Firestore לפי schoolId
 
@@ -179,6 +185,103 @@ export const demoStrips: Strip[] = [
     ],
   },
 ];
+
+// מערכות שעות לדוגמה — נזרעות ל-schedules/{classId}
+export const demoSchedules: Record<string, ClassSchedule> = {
+  ב2: {
+    days: [
+      {
+        lessons: [
+          { subject: "מפגש בוקר", teacher: "מיכל ברק" },
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "חשבון", teacher: "מיכל ברק" },
+          { subject: "אנגלית", teacher: "יעל שדה" },
+          { subject: "אמנות", teacher: "נועה פרץ" },
+        ],
+      },
+      {
+        lessons: [
+          { subject: "חשבון", teacher: "מיכל ברק" },
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "חינוך גופני", teacher: "אבי כהן" },
+          { subject: "מדעים", teacher: "רונית לוי" },
+          { subject: "תורה", teacher: "מיכל ברק" },
+        ],
+      },
+      {
+        lessons: [
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "חשבון", teacher: "מיכל ברק" },
+          { subject: "מוזיקה", teacher: "עומר גל" },
+          { subject: "אנגלית", teacher: "יעל שדה" },
+          { subject: "כישורי חיים", teacher: "מיכל ברק" },
+        ],
+      },
+      {
+        lessons: [
+          { subject: "מדעים", teacher: "רונית לוי" },
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "חשבון", teacher: "מיכל ברק" },
+          { subject: "ספרייה", teacher: "מיכל ברק" },
+          { subject: "אמנות", teacher: "נועה פרץ" },
+        ],
+      },
+      {
+        lessons: [
+          { subject: "חינוך גופני", teacher: "אבי כהן" },
+          { subject: "חשבון", teacher: "מיכל ברק" },
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "תורה", teacher: "מיכל ברק" },
+        ],
+      },
+      {
+        lessons: [
+          { subject: "מפגש שבת", teacher: "מיכל ברק" },
+          { subject: "שפה", teacher: "מיכל ברק" },
+          { subject: "משחקי חשיבה", teacher: "מיכל ברק" },
+        ],
+      },
+    ],
+  },
+};
+
+// אלפון צוות לדוגמה — נזרע ל-staff/{staffId}
+export const demoStaff: StaffMember[] = [
+  {
+    id: "s1",
+    name: "מיכל ברק",
+    subjects: ["מחנכת", "שפה", "חשבון"],
+    classes: ["ב2"],
+    email: "michal@ofek-demo.school",
+  },
+  {
+    id: "s2",
+    name: "יעל שדה",
+    subjects: ["אנגלית"],
+    classes: ["ב1", "ב2", "ג1"],
+    email: "yael@ofek-demo.school",
+  },
+  {
+    id: "s3",
+    name: "אבי כהן",
+    subjects: ["חינוך גופני"],
+    classes: ["א1", "ב2", "ה1"],
+    email: "avi@ofek-demo.school",
+  },
+  {
+    id: "s4",
+    name: "רונית לוי",
+    subjects: ["מדעים"],
+    classes: ["ב2", "ה1"],
+    email: "ronit@ofek-demo.school",
+    phone: "050-0000000",
+  },
+];
+
+/** קישורי אלבום מוגנים לפריטי תמונות — נזרעים ל-items/{id}/private/parents */
+export const demoPrivateAlbums: Record<string, string> = {
+  ph1: "https://photos.google.com/",
+};
 
 export const demoEvents: SchoolEvent[] = [
   {

@@ -1,7 +1,7 @@
 # SPEC — פוקוסקול (FocuSchool)
 
 > **מסמך העבודה המרכזי של הפרויקט.** כל סשן פיתוח — בכל מודל (Fable / Opus / Sonnet) — מתחיל בקריאת המסמך הזה מתחילתו ועד סופו.
-> עדכון אחרון: 2026-07-10 · מסמכים משלימים: [VISION.md](VISION.md) (החזון המקורי כלשונו) · [ARCHITECTURE.md](ARCHITECTURE.md)
+> עדכון אחרון: 2026-07-12 · מסמכים משלימים: [VISION.md](VISION.md) (החזון המקורי כלשונו) · [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
@@ -44,7 +44,7 @@
 - **Windows עם שם משתמש בעברית** אצל בעלת המוצר — ראו טריקים בסעיף 6.
 - SEO אמיתי → הדף הציבורי חייב להישאר SSR/ISR (לא client-only).
 
-## 5. מצב נוכחי — מה בנוי ועובד (2026-07-10)
+## 5. מצב נוכחי — מה בנוי ועובד (2026-07-12)
 
 **שלב 1 (MVP האתר הציבורי) הושלם ובאוויר** ב-https://focuschool.chepti.com עם בית ספר דמו ("בית ספר אופק"):
 
@@ -55,18 +55,25 @@
 - SEO: JSON-LD, sitemap, robots, canonical, metadataBase. PWA manifest (התקנה למסך הבית).
 - פביקון ממסגרת הפוקוס של הלוגו. פונט Fredoka. עיצוב לפי צבעי הלוגו.
 
-**עבודה שנעצרה באמצע (להשלים בסשן הבא!):** מודול רשימת הורים —
-`types.ts` (role parent + classes/phone), `firestore.rules` (אדמין מנהל members), `AuthButton.tsx` (הורה לא רואה "+ הוספה") — **כבר נערכו ולא קומטו**. חסר: מסך `/members` (מפרט בסעיף 10, מודול 2.1) ופריסת ה-rules המעודכנים.
+**שלב 2 — מודולים 2.1–2.3 בנויים (2026-07-12), rules פרוסים, דמו נזרע:**
+
+- **2.1 `/members`** — מסך אדמין: הדבקת רשימת הורים (פסיקים או TAB מאקסל), תצוגה מקדימה עם שורות שגויות, מיילים קיימים מדולגים (אי אפשר לדרוס admin), writeBatch עם role=parent, וטבלת חברים קיימים. קישור מ-`/manage`.
+- **2.2 אזור אישי** — `ParentZone` בדף הבית (client): "שלום {שם}", אירועים קרובים של השכבות שלו, מערכת שעות לכל כיתה (`schedules/{classId}`, ימים כמפות `{lessons: []}` — אין מערך במערך ב-Firestore!), אלפון מורים מסונן ב-array-contains-any עם mailto. מוצג לכל member עם classes (גם לאדמין — לצורכי בדיקה chepti קיבלה בזריעה classes=["ב2"]).
+- **2.3 תמונות מוגנות** — `items/{id}/private/parents` עם albumUrl; `PhotosRow` (client) שולף לחברים מחוברים והכרטיס נהיה קליקבילי עם 🔓. בדמו: ph1.
+- rules: פונקציית isCommunity (כולל parent) ל-schedules/staff/private; כתיבה — admin (staff לתוכן private).
+- **נבדק אנונימית בלבד** (דפדפן ללא התחברות): הדף הציבורי נקי, `/members` חסום, אין קונסול-שגיאות. **זרימות מחובר טרם נבדקו ידנית** — לבדוק בפרודקשן עם חשבון האדמין.
+- נותר בשלב 2: **2.4 PWA push** — דורש service account JSON כ-env ב-Vercel ומפתח VAPID (יצירה בקונסולת Firebase → Cloud Messaging → Web Push certificates).
 
 ### מפת קבצים
 
 ```
-src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/,
+src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/, members/,
                     icon.svg, manifest.ts, sitemap.ts, robots.ts
-src/components/     Header, AuthButton, StripRow, EventsCalendar, Footer
+src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
+                    ParentZone (אזור אישי), EventsCalendar, Footer
 src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
                     demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook)
-scripts/seed.ts     זריעת דמו + members (npm run seed)
+scripts/seed.ts     זריעת דמו + members + schedules/staff/private (npm run seed)
 firestore.rules     חוקי אבטחה (נפרסים עם firebase deploy --only firestore:rules)
 docs/               SPEC.md (זה), VISION.md, ARCHITECTURE.md
 ```
@@ -110,11 +117,12 @@ schools/{schoolId} ✅            name, description, city, icalUrl?, calendarId?
   strips/{stripId} ✅            type: photos|files|posts|links, title, order, visible
     items/{itemId} ✅            status: pending|published, title, body?, url?, emoji?,
                                  gradient?, date (ISO), createdBy
+      private/parents ✅         albumUrl — נקרא רק ע"י חברי קהילה (isCommunity)
   events/{eventId} ✅            title, date (ISO), grades: [], publicInfo
                                  ⚠️ אסור staffInfo כאן (אין אבטחת שדה) — מסמך משנה בעתיד
   classes/{classId} 🔜           name ("ב2"), grade ("ב")
-  schedules/{classId} 🔜         days: 6 ימים × עד 8 שיעורים של {subject, teacher}
-  staff/{staffId} 🔜             אלפון: name, subjects[], classes[], email?, phone?
+  schedules/{classId} ✅         days: [{lessons: [{subject, teacher?}]}] × עד 6 ימים
+  staff/{staffId} ✅             אלפון: name, subjects[], classes[], email?, phone?
   messages/{messageId} 🔜        type: weekly|reminder|targeted, לפי מודול 3
   checklists/{checklistId} 🔜    לפי מודול 3.2
   signups/{signupId} 🔜          לפי מודול 3.5

@@ -1,6 +1,7 @@
 import { Header } from "@/components/Header";
 import { StripRow } from "@/components/StripRow";
 import { EventsCalendar } from "@/components/EventsCalendar";
+import { ParentZone } from "@/components/ParentZone";
 import { Footer } from "@/components/Footer";
 import { getSchoolData } from "@/lib/data";
 
@@ -26,6 +27,7 @@ export default async function HomePage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <ParentZone events={events} schoolId={school.id} />
         {strips.map((strip) => (
           <StripRow key={strip.id} strip={strip} />
         ))}

@@ -51,6 +51,32 @@ export interface Member {
   phone?: string;
 }
 
+export interface Lesson {
+  subject: string;
+  teacher?: string;
+}
+
+/** יום לימודים — עטוף במפה כי Firestore לא מרשה מערך בתוך מערך */
+export interface ScheduleDay {
+  lessons: Lesson[];
+}
+
+/** מערכת שעות של כיתה — מסמך schedules/{classId}, עד 6 ימים */
+export interface ClassSchedule {
+  days: ScheduleDay[];
+}
+
+/** איש/אשת צוות באלפון — staff/{staffId} */
+export interface StaffMember {
+  id: string;
+  name: string;
+  subjects: string[];
+  /** הכיתות שמלמד/ת, למשל ["ב2", "ב1"] */
+  classes: string[];
+  email?: string;
+  phone?: string;
+}
+
 export interface SchoolEvent {
   id: string;
   title: string;

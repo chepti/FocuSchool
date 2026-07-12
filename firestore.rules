@@ -23,6 +23,12 @@ service cloud.firestore {
       return isSignedIn() && memberRole(schoolId) in ['admin', 'publisher', 'contributor'];
     }
 
+    // כל חבר קהילה מזוהה, כולל הורים — למידע מוגן (מערכת שעות, אלפון, אלבומים)
+    function isCommunity(schoolId) {
+      return isSignedIn()
+             && memberRole(schoolId) in ['admin', 'publisher', 'contributor', 'parent'];
+    }
+
     match /schools/{schoolId} {
       allow read: if true;
       allow write: if false;
@@ -47,7 +53,25 @@ service cloud.firestore {
                         || (isMember(schoolId)
                             && request.resource.data.status == 'pending');
           allow update, delete: if isStaff(schoolId);
+
+          // מידע להורים בלבד על פריט (למשל קישור לאלבום Google Photos)
+          match /private/{docId} {
+            allow read: if isCommunity(schoolId);
+            allow write: if isStaff(schoolId);
+          }
         }
+      }
+
+      // מערכת שעות של כיתה — לחברי הקהילה בלבד (הסינון לכיתות של ההורה נעשה ב-UI)
+      match /schedules/{classId} {
+        allow read: if isCommunity(schoolId);
+        allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
+      }
+
+      // אלפון צוות — כולל טלפונים, לכן לעולם לא ציבורי
+      match /staff/{staffId} {
+        allow read: if isCommunity(schoolId);
+        allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
       }
 
       // הערה: כשנוסיף מידע-צוות לאירועים, הוא יישב במסמך משנה נפרד
