@@ -81,17 +81,30 @@
 - **3.6 פניות** — `inquiries/{id}` (toEmail, fromEmail/Name, body, notified, done?). טופס "פנייה לצוות" באזור האישי (נמענים = staff עם מייל; s5 "הנהלת בית הספר"=chepti נוסף לדמו). ב-`/manage`: תיבת "פניות אליי" (בזמן אמת, טופל ✓, תשובה במייל) + בחירת digest (מיידי/יומי/שבועי — נשמר בשדה digest ב-member; rule מאפשר לחבר לעדכן לעצמו רק אותו). **ה-dispatch מטפל גם בפניות:** POST (אחרי יצירה) שולח רק לנמעני immediate; GET (cron יומי) שולח יומי + שבועי (בימי ראשון), התראה אחת מרוכזת לנמען ("N פניות ממתינות"), מסמן notified.
 - נבדק: build נקי, כל הדפים נטענים, rules פרוסים, דמו נזרע. **DoD ידני:** סימון דו-צדדי חי בצ'קליסט; משבצת מלאה ננעלת משני מכשירים; פנייה מגיעה כ-push לנמען.
 
+**שלב 4 — חבילת ועד ההורים בנויה (2026-07-13); נותר: שכפול (multi-tenant):**
+
+- **role=committee** — נוסף ל-types, ל-ROLE_LABELS ב-`/members` (משנים תפקיד בעריכת שורה), ל-isCommunity ול-helper חדש isCommittee (= committee או admin).
+- **מסך `/committee`** (ועד/אדמין; קישור "ועד" ב-AuthButton לוועד וב-`/manage` לאדמין):
+  - פרסום החלטה → item published ברצועת `committee` ("עדכוני ועד ההורים", order 4, נזרעה); rules מתירים לוועד לפרסם *רק* ברצועה הזו.
+  - סקרים: `polls/{id}` (question, options[{id,label}], classes יעד, open) + `votes/{email}` (קול אחד, doc id=מייל, אפשר לשנות כל עוד open — rule בודק get(poll).open). יצירה/סגירה/מחיקה במסך, תוצאות חיות (onSnapshot).
+  - דמי ועד: אוסף `fees/{email}` ({paid, at, updatedBy}) — **בכוונה לא שדה ב-member** כדי שהורה לא יראה (member נקרא ע"י עצמו); קריאה/כתיבה רק isCommittee. צ'קבוקס פר הורה + מונה שילמו.
+  - קישור ל-`/signups` — הוועד מורשה ליצור רשימות (אירועי כיתה/אישורי הגעה); ה-rules והמסך עודכנו.
+- **PollsPanel** באזור האישי: הצבעה בלחיצה, תוצאות נחשפות אחרי הצבעה או בסגירה, מסונן לפי כיתות. הוועד רואה את האזור האישי גם בלי classes.
+- rules פרוסים; members read הורחב לוועד (לניהול דמי ועד).
+- **נותר משלב 4: שכפול בתי ספר (multi-tenant)** — רפקטור גדול: SCHOOL_ID קשיח בכל המסכים → routing `/s/{schoolId}` או סאב-דומיין (החלטת מוצר!), מסך יצירת בית ספר (batch: school+admin member, ואז strips ברירת מחדל), onboarding מודרך. מומלץ סשן ייעודי.
+
 ### מפת קבצים
 
 ```
 src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/, members/,
                     message/ (כתיבת הודעה), checklists/ (מעקב משימות לצוות),
-                    signups/ (שיבוצים לצוות), api/push/ (בדיקת FCM),
+                    signups/ (שיבוצים — צוות+ועד), committee/ (החלטות/סקרים/דמי ועד),
+                    api/push/ (בדיקת FCM),
                     api/messages/dispatch/ (הודעות שהגיע זמנן + פניות/digest),
                     icon.svg, manifest.ts, sitemap.ts, robots.ts
 src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
                     ParentZone (אזור אישי+הודעות), ChecklistsPanel, SignupsPanel,
-                    InquiryForm, PushButton, EventsCalendar, Footer
+                    PollsPanel, InquiryForm, PushButton, EventsCalendar, Footer
 src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
                     demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook),
                     push (הרשמה+foreground), push-server (עזרי FCM/Firestore לשרת)
@@ -154,7 +167,9 @@ schools/{schoolId} ✅            name, description, city, icalUrl?, calendarId?
   signups/{signupId} ✅          title, classes[], slots[{id,label,max}], counts{}
     entries/{email} ✅           slotId, name, at — נרשם בטרנזקציה מול counts
   inquiries/{inquiryId} ✅       toEmail, fromEmail/Name, body, notified, done?
-  polls/{pollId} 🔜              לפי מודול 4
+  polls/{pollId} ✅              question, options[{id,label}], classes[], open
+    votes/{email} ✅             optionId, at — קול אחד לחבר
+  fees/{email} ✅                paid, at, updatedBy — לוועד/אדמין בלבד
 ```
 
 ## 8. אבטחה — עקרונות ה-rules

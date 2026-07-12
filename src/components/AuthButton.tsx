@@ -42,6 +42,14 @@ export function AuthButton() {
           ניהול
         </Link>
       )}
+      {member?.role === "committee" && (
+        <Link
+          href="/committee"
+          className="rounded-full px-3 py-2 text-sm font-medium text-brand-violet transition hover:bg-brand-purple/10"
+        >
+          ועד
+        </Link>
+      )}
       <button
         type="button"
         onClick={() => signOut(getAuthClient())}

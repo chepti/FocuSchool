@@ -195,12 +195,20 @@ export default function ManagePage() {
             </>
           )}
           {member?.role === "admin" && (
-            <Link
-              href="/members"
-              className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
-            >
-              ניהול חברים
-            </Link>
+            <>
+              <Link
+                href="/committee"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
+              >
+                🤝 ועד
+              </Link>
+              <Link
+                href="/members"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
+              >
+                ניהול חברים
+              </Link>
+            </>
           )}
         </div>
       </div>

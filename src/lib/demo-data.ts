@@ -148,10 +148,19 @@ export const demoStrips: Strip[] = [
     ],
   },
   {
+    // רצועת הוועד — הוועד מפרסם אליה ישירות ממסך /committee
+    id: "committee",
+    type: "posts",
+    title: "עדכוני ועד ההורים",
+    order: 4,
+    visible: true,
+    items: [],
+  },
+  {
     id: "links",
     type: "links",
     title: "קישורים שימושיים",
-    order: 4,
+    order: 5,
     visible: true,
     items: [
       {

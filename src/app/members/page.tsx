@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
   publisher: "פרסום",
   contributor: "תורם תוכן",
   parent: "הורה",
+  committee: "ועד הורים",
 };
 
 interface MemberRow extends Member {

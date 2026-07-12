@@ -62,7 +62,8 @@ function SignupEntries({ signup }: { signup: Signup }) {
 
 export default function SignupsPage() {
   const { user, member, loading } = useMember(SCHOOL_ID);
-  const staff = isStaff(member);
+  // גם ועד ההורים — לאירועי כיתה ואישורי הגעה
+  const staff = isStaff(member) || member?.role === "committee";
 
   const [members, setMembers] = useState<(Member & { email: string })[]>([]);
   const [signups, setSignups] = useState<Signup[]>([]);
@@ -176,7 +177,7 @@ export default function SignupsPage() {
 
         {loading && <p className="text-ink/60">טוען…</p>}
         {!loading && (!user || !staff) && (
-          <p className="text-ink/70">הדף הזה זמין רק לצוות.</p>
+          <p className="text-ink/70">הדף הזה זמין רק לצוות ולוועד ההורים.</p>
         )}
 
         {staff && (

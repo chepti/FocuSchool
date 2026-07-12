@@ -26,7 +26,12 @@ service cloud.firestore {
     // כל חבר קהילה מזוהה, כולל הורים — למידע מוגן (מערכת שעות, אלפון, אלבומים)
     function isCommunity(schoolId) {
       return isSignedIn()
-             && memberRole(schoolId) in ['admin', 'publisher', 'contributor', 'parent'];
+             && memberRole(schoolId) in ['admin', 'publisher', 'contributor', 'parent', 'committee'];
+    }
+
+    // ועד הורים (או אדמין) — החלטות ועד, סקרים, דמי ועד, אירועי כיתה
+    function isCommittee(schoolId) {
+      return isSignedIn() && memberRole(schoolId) in ['committee', 'admin'];
     }
 
     match /schools/{schoolId} {
@@ -34,11 +39,12 @@ service cloud.firestore {
       allow write: if false;
 
       match /members/{email} {
-        // כל חבר רואה את הרשומה של עצמו; צוות (גם מורים — לבחירת יעדי
-        // הודעות ואלפון הורים) רואה את כולם; ניהול — אדמין בלבד
+        // כל חבר רואה את הרשומה של עצמו; צוות (לבחירת יעדי הודעות) והוועד
+        // (לניהול דמי ועד) רואים את כולם; ניהול — אדמין בלבד
         allow read: if isSignedIn()
                     && (request.auth.token.email.lower() == email
-                        || isStaff(schoolId));
+                        || isStaff(schoolId)
+                        || isCommittee(schoolId));
         allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
         // כל חבר רשאי לעדכן לעצמו את העדפת ההתראות בלבד
         allow update: if isSignedIn()
@@ -61,11 +67,16 @@ service cloud.firestore {
         match /items/{itemId} {
           // פריטים בהמתנה גלויים רק לצוות
           allow read: if resource.data.status == 'published' || isStaff(schoolId);
+          // הוועד מפרסם ישירות — אבל רק ברצועה הייעודית שלו
           allow create: if (isStaff(schoolId)
                             && request.resource.data.status in ['published', 'pending'])
                         || (isMember(schoolId)
-                            && request.resource.data.status == 'pending');
-          allow update, delete: if isStaff(schoolId);
+                            && request.resource.data.status == 'pending')
+                        || (isCommittee(schoolId)
+                            && stripId == 'committee'
+                            && request.resource.data.status == 'published');
+          allow update, delete: if isStaff(schoolId)
+                                || (isCommittee(schoolId) && stripId == 'committee');
 
           // מידע להורים בלבד על פריט (למשל קישור לאלבום Google Photos)
           match /private/{docId} {
@@ -120,12 +131,13 @@ service cloud.firestore {
         }
       }
 
-      // רשימות שיבוץ/כיבוד (מודול 3.5) — הצוות יוצר; הורים נרשמים
+      // רשימות שיבוץ/כיבוד (מודול 3.5) — צוות או ועד יוצרים; הורים נרשמים
       match /signups/{signupId} {
         allow read: if isCommunity(schoolId);
-        allow create, delete: if isStaff(schoolId);
+        allow create, delete: if isStaff(schoolId) || isCommittee(schoolId);
         // הורה מעדכן רק את מונה המשבצות — בטרנזקציה יחד עם ה-entry שלו
         allow update: if isStaff(schoolId)
+                      || isCommittee(schoolId)
                       || (isCommunity(schoolId)
                           && request.resource.data.diff(resource.data)
                                .affectedKeys().hasOnly(['counts']));
@@ -137,6 +149,27 @@ service cloud.firestore {
                        || (isSignedIn()
                            && request.auth.token.email.lower() == email);
         }
+      }
+
+      // סקרים והצבעות (שלב 4) — ועד או צוות יוצרים; כל חבר מצביע פעם אחת
+      match /polls/{pollId} {
+        allow read: if isCommunity(schoolId);
+        allow create, update, delete: if isCommittee(schoolId) || isStaff(schoolId);
+
+        match /votes/{email} {
+          // שקיפות קהילתית: התוצאות גלויות לכל חבר
+          allow read: if isCommunity(schoolId);
+          // מצביעים רק בשם עצמכם, ורק כשהסקר פתוח
+          allow write: if isCommunity(schoolId)
+                       && request.auth.token.email.lower() == email
+                       && get(/databases/$(database)/documents/schools/$(schoolId)/polls/$(pollId)).data.open == true;
+        }
+      }
+
+      // דמי ועד (שלב 4) — אוסף נפרד, גלוי לוועד ולאדמין בלבד
+      // (בכוונה לא שדה ב-member — כדי שהורים לא יראו זה את זה)
+      match /fees/{email} {
+        allow read, write: if isCommittee(schoolId);
       }
 
       // פניות לצוות (מודול 3.6) — הפונה יוצר; הנמען קורא ומסמן טופל

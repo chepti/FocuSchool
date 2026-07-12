@@ -17,6 +17,7 @@ import { attachForegroundNotifications } from "@/lib/push";
 import { PushButton } from "./PushButton";
 import { ChecklistsPanel } from "./ChecklistsPanel";
 import { SignupsPanel } from "./SignupsPanel";
+import { PollsPanel } from "./PollsPanel";
 import { InquiryForm } from "./InquiryForm";
 import type {
   ClassSchedule,
@@ -54,7 +55,10 @@ export function ParentZone({
 
   const classes = member?.classes ?? [];
   const show =
-    member != null && (member.role === "parent" || classes.length > 0);
+    member != null &&
+    (member.role === "parent" ||
+      member.role === "committee" ||
+      classes.length > 0);
 
   // הודעות שמגיעות כשהאתר פתוח על המסך — מוצגות ידנית
   useEffect(() => {
@@ -276,6 +280,11 @@ export function ParentZone({
               schoolId={schoolId}
               email={user.email.toLowerCase()}
               displayName={member.name ?? user.email}
+              classes={classes}
+            />
+            <PollsPanel
+              schoolId={schoolId}
+              email={user.email.toLowerCase()}
               classes={classes}
             />
           </>

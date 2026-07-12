@@ -40,7 +40,12 @@ export interface StripItem {
   createdBy?: string;
 }
 
-export type MemberRole = "admin" | "publisher" | "contributor" | "parent";
+export type MemberRole =
+  | "admin"
+  | "publisher"
+  | "contributor"
+  | "parent"
+  | "committee";
 
 /** העדפת קבלת התראות על פניות: מיידי / סיכום יומי / סיכום שבועי */
 export type DigestPref = "immediate" | "daily" | "weekly";
@@ -162,6 +167,39 @@ export interface SignupEntry {
   slotId: string;
   name?: string;
   at: string; // ISO
+}
+
+export interface PollOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * סקר/הצבעה — polls/{id}; ההצבעות ב-votes/{email} (קול אחד לחבר).
+ * נוצר ע"י ועד או צוות.
+ */
+export interface Poll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  /** כיתות יעד; ריק = כל בית הספר */
+  classes: string[];
+  open: boolean;
+  createdBy: string;
+  createdAt: string; // ISO
+}
+
+/** votes/{email} */
+export interface PollVote {
+  optionId: string;
+  at: string; // ISO
+}
+
+/** דמי ועד — fees/{email}; גלוי לוועד ולאדמין בלבד (אוסף נפרד, לא שדה ב-member) */
+export interface FeeRecord {
+  paid: boolean;
+  at?: string; // ISO
+  updatedBy?: string;
 }
 
 /** פנייה לצוות — inquiries/{id}; notified מנוהל ע"י ה-dispatch */
