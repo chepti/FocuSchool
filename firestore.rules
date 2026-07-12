@@ -34,10 +34,11 @@ service cloud.firestore {
       allow write: if false;
 
       match /members/{email} {
-        // כל חבר רואה את הרשומה של עצמו; אדמין רואה ומנהל את כולם
+        // כל חבר רואה את הרשומה של עצמו; צוות (גם מורים — לבחירת יעדי
+        // הודעות ואלפון הורים) רואה את כולם; ניהול — אדמין בלבד
         allow read: if isSignedIn()
                     && (request.auth.token.email.lower() == email
-                        || memberRole(schoolId) == 'admin');
+                        || isStaff(schoolId));
         allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
 
         // טוקני נוטיפיקציות — כל חבר מנהל רק את של עצמו.
@@ -79,6 +80,14 @@ service cloud.firestore {
       match /staff/{staffId} {
         allow read: if isCommunity(schoolId);
         allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
+      }
+
+      // הודעות צוות (עדכון שבועי / תזכורת / ממוקדת) — כתיבה לצוות בלבד.
+      // קריאה לכל חבר קהילה; הסינון "רק להורים המסומנים" נעשה כרגע ב-UI
+      // וב-push (בשרת) — הקשחה למסמכי-משנה פר-הורה אם יידרש בעתיד.
+      match /messages/{messageId} {
+        allow read: if isCommunity(schoolId);
+        allow create, update, delete: if isStaff(schoolId);
       }
 
       // הערה: כשנוסיף מידע-צוות לאירועים, הוא יישב במסמך משנה נפרד

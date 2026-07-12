@@ -65,17 +65,30 @@
 - **בדיקות בעלת המוצר (2026-07-12):** מערכת השעות מוצגת יפה; הדבקת אקסל עובדת; push נרשם אך לא הוצג — האבחון (סקריפט REST עם טוקן firebase-tools) הראה שהטוקנים נשמרו ושליחת FCM ישירה מחזירה 200, כלומר הבעיה הייתה **foreground**: הודעות כשהאתר פתוח על המסך לא מוצגות אוטומטית. תוקן: מאזין onMessage שמציג דרך ה-SW + נוטיפיקציית בדיקה מקומית מיד אחרי הרשמה. עוד מהפידבק: כפתור "הורה? 🤔" למחובר שאינו member (הסבר לפנות לצוות), רמז להורה בלי כיתות, עריכה ומחיקה בטבלת `/members` (בלי למחוק/להוריד תפקיד לעצמך). תיקון: טוקן נמחק רק על UNREGISTERED (לא כל 400).
 - `/api/push` בלי אימות מחזיר 401 (נבדק בפרודקשן); טוקן מזויף → 403, מה שמוכיח שה-SA env נטען ונחתם. **נותר לאמת במכשיר: קבלת ההודעה בפועל אחרי התיקון.**
 
+**שלב 3 — מודולים 3.1+3.3+3.4 בנויים (2026-07-12) כמערכת הודעות אחת:**
+
+- **מודל:** `messages/{id}` — type (weekly/reminder/targeted), title?, body, homework? (weekly), classes[] (יעד; ריק=כולם), emails[] (targeted), createdBy/At, sendAt, `pending` (דגל לשליחה — נבחר במקום שאילתת sentAt==null כדי להימנע מ-composite index).
+- **`/message`** — מסך כתיבה לצוות (קישור מ-`/manage`): שלושה סוגים, בחירת כיתה (נגזרת מאיחוד classes של החברים), בחירת הורים ל-targeted, datetime-local לתזמון reminder. שמירה → addDoc → אם מיידי: POST ל-dispatch.
+- **`/api/messages/dispatch`** — שולף pending, מסנן sendAt<=now, מסמן sentAt *לפני* שליחה (אידמפוטנטי), פותר קהל (emails > classes > כולם) ושולח FCM דרך `push-server.ts` (העזרים המשותפים חולצו מ-/api/push). **ללא אימות בכוונה** — בטוח כי שולח רק מה שמתוזמן ממילא. Vercel Cron יומי ב-04:00 UTC (`vercel.json`) לתזכורות עתידיות.
+- **אזור אישי:** סקשן "הודעות מהצוות" — עדכון שבועי אחרון לכל כיתה, תזכורות והודעות אישיות שלי (סינון לפי emails/classes/שכבות, רק sendAt<=now).
+- **rules:** messages — קריאה isCommunity, כתיבה isStaff; members — קריאה גם ל-publisher (מורים צריכים רשימת הורים לבחירת יעדים). *הערה: פרטיות הודעות targeted נאכפת ב-UI וב-push בלבד — הקשחה עתידית אם יידרש.* פרוסים.
+- נבדק: build נקי, `/message` נטען (חסום ללא צוות), dispatch בפרודקשן. **DoD ידני נותר:** מורה שולח עדכון שבועי ← הורה רואה + מקבל push; תזכורת מתוזמנת נשלחת בסבב היומי.
+- נותר בשלב 3: 3.2 (צ'קליסטים), 3.5 (רשימות שיבוץ), 3.6 (פניות עם digest).
+
 ### מפת קבצים
 
 ```
 src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/, members/,
-                    api/push/ (שליחת FCM), icon.svg, manifest.ts, sitemap.ts, robots.ts
+                    message/ (כתיבת הודעה לצוות), api/push/ (בדיקת FCM),
+                    api/messages/dispatch/ (שליחת הודעות שהגיע זמנן),
+                    icon.svg, manifest.ts, sitemap.ts, robots.ts
 src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
-                    ParentZone (אזור אישי), PushButton, EventsCalendar, Footer
+                    ParentZone (אזור אישי+הודעות), PushButton, EventsCalendar, Footer
 src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
                     demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook),
-                    push (הרשמה לנוטיפיקציות)
+                    push (הרשמה+foreground), push-server (עזרי FCM/Firestore לשרת)
 public/firebase-messaging-sw.js   service worker לקבלת push ברקע
+vercel.json         Vercel Cron יומי → /api/messages/dispatch
 scripts/seed.ts     זריעת דמו + members + schedules/staff/private (npm run seed)
 firestore.rules     חוקי אבטחה (נפרסים עם firebase deploy --only firestore:rules)
 docs/               SPEC.md (זה), VISION.md, ARCHITECTURE.md
@@ -126,7 +139,8 @@ schools/{schoolId} ✅            name, description, city, icalUrl?, calendarId?
   classes/{classId} 🔜           name ("ב2"), grade ("ב")
   schedules/{classId} ✅         days: [{lessons: [{subject, teacher?}]}] × עד 6 ימים
   staff/{staffId} ✅             אלפון: name, subjects[], classes[], email?, phone?
-  messages/{messageId} 🔜        type: weekly|reminder|targeted, לפי מודול 3
+  messages/{messageId} ✅        type: weekly|reminder|targeted, title?, body,
+                                 homework?, classes[], emails[], sendAt, pending, sentAt?
   checklists/{checklistId} 🔜    לפי מודול 3.2
   signups/{signupId} 🔜          לפי מודול 3.5
   polls/{pollId} 🔜              לפי מודול 4

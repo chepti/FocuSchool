@@ -126,14 +126,24 @@ export default function ManagePage() {
         <Link href="/" className="text-sm text-brand-violet">
           → חזרה לדף הבית
         </Link>
-        {member?.role === "admin" && (
-          <Link
-            href="/members"
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
-          >
-            ניהול חברים
-          </Link>
-        )}
+        <div className="flex gap-2">
+          {staff && (
+            <Link
+              href="/message"
+              className="rounded-full bg-brand-purple px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-violet"
+            >
+              ✍️ הודעה להורים
+            </Link>
+          )}
+          {member?.role === "admin" && (
+            <Link
+              href="/members"
+              className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
+            >
+              ניהול חברים
+            </Link>
+          )}
+        </div>
       </div>
       <div className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-ink/5">
         <h1 className="mb-4 text-2xl font-medium text-ink">

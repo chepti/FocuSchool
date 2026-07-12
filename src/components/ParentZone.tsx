@@ -1,12 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
 import { attachForegroundNotifications } from "@/lib/push";
 import { PushButton } from "./PushButton";
-import type { ClassSchedule, SchoolEvent, StaffMember } from "@/lib/types";
+import type {
+  ClassSchedule,
+  SchoolEvent,
+  SchoolMessage,
+  StaffMember,
+} from "@/lib/types";
 import { hebrewDayMonthLabel } from "@/lib/hebrew-date";
 
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי"];
@@ -31,6 +45,7 @@ export function ParentZone({
   const { user, member, loading } = useMember(schoolId);
   const [schedules, setSchedules] = useState<ClassWithSchedule[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [messages, setMessages] = useState<SchoolMessage[]>([]);
   const [openClass, setOpenClass] = useState<string | null>(null);
   const [hintOpen, setHintOpen] = useState(false);
 
@@ -47,6 +62,56 @@ export function ParentZone({
     });
     return () => detach?.();
   }, [user]);
+
+  // הודעות מהצוות — עדכונים שבועיים, תזכורות והודעות אישיות
+  useEffect(() => {
+    if (!show || !user?.email) return;
+    const email = user.email.toLowerCase();
+    const myClasses = member?.classes ?? [];
+    const grades = [...new Set(myClasses.map(gradeOf))];
+    let cancelled = false;
+
+    getDocs(
+      query(
+        collection(getDb(), "schools", schoolId, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(30),
+      ),
+    )
+      .then((snap) => {
+        if (cancelled) return;
+        const now = new Date().toISOString();
+        const relevant = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as SchoolMessage)
+          .filter((m) => m.sendAt <= now)
+          .filter((m) => {
+            if (m.emails && m.emails.length > 0) return m.emails.includes(email);
+            if (m.classes && m.classes.length > 0) {
+              return m.classes.some(
+                (c) => myClasses.includes(c) || grades.includes(c),
+              );
+            }
+            return true; // כל בית הספר
+          });
+        // עדכון שבועי — רק האחרון לכל כיתה
+        const seenWeekly = new Set<string>();
+        setMessages(
+          relevant.filter((m) => {
+            if (m.type !== "weekly") return true;
+            const key = m.classes?.[0] ?? "";
+            if (seenWeekly.has(key)) return false;
+            seenWeekly.add(key);
+            return true;
+          }),
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show, user, member, schoolId]);
 
   useEffect(() => {
     if (!show || classes.length === 0) return;
@@ -152,6 +217,49 @@ export function ParentZone({
         {user?.email && (
           <div className="mt-3">
             <PushButton schoolId={schoolId} email={user.email} />
+          </div>
+        )}
+
+        {messages.length > 0 && (
+          <div className="mt-4">
+            <h3 className="mb-2 text-sm font-medium text-brand-violet">
+              הודעות מהצוות
+            </h3>
+            <ul className="flex flex-col gap-2">
+              {messages.map((m) => (
+                <li
+                  key={m.id}
+                  className="rounded-xl bg-card/80 px-4 py-3 ring-1 ring-ink/5"
+                >
+                  <div className="mb-1 flex items-baseline gap-2 text-xs">
+                    <span className="font-medium text-brand-purple">
+                      {m.type === "weekly"
+                        ? `עדכון שבועי${m.classes?.[0] ? ` · כיתה ${m.classes[0]}` : ""}`
+                        : m.type === "targeted"
+                          ? "הודעה אישית 🎯"
+                          : "תזכורת ⏰"}
+                    </span>
+                    <span className="text-ink/40">
+                      {new Date(m.createdAt).toLocaleDateString("he-IL", {
+                        day: "numeric",
+                        month: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  {m.title && (
+                    <div className="font-medium text-ink">{m.title}</div>
+                  )}
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80">
+                    {m.body}
+                  </p>
+                  {m.homework && (
+                    <p className="mt-1.5 rounded-lg bg-brand-purple/5 px-2.5 py-1.5 text-sm text-ink/80">
+                      📚 שיעורי בית: {m.homework}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

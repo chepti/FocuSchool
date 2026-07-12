@@ -77,6 +77,34 @@ export interface StaffMember {
   phone?: string;
 }
 
+export type MessageType = "weekly" | "reminder" | "targeted";
+
+/**
+ * הודעה מהצוות — messages/{messageId}.
+ * weekly: עדכון שבועי של מחנך לכיתה (classes=[כיתה], homework אופציונלי)
+ * reminder: תזכורת לכיתות/שכבה/כולם, אפשר עם sendAt עתידי
+ * targeted: הודעה אישית לתת-קבוצת הורים (emails)
+ */
+export interface SchoolMessage {
+  id: string;
+  type: MessageType;
+  title?: string;
+  body: string;
+  /** weekly בלבד — "מה ניתן כשיעורי בית" */
+  homework?: string;
+  /** כיתות יעד; ריק/חסר = כל בית הספר */
+  classes?: string[];
+  /** targeted בלבד — מיילים של ההורים המסומנים */
+  emails?: string[];
+  createdBy: string;
+  createdAt: string; // ISO
+  /** מתי לשלוח push — מיידי או עתידי (תזכורת) */
+  sendAt: string; // ISO
+  /** ממתין לשליחת push? ה-dispatch מוריד את הדגל וקובע sentAt */
+  pending: boolean;
+  sentAt?: string;
+}
+
 export interface SchoolEvent {
   id: string;
   title: string;
