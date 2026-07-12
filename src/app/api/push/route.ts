@@ -155,8 +155,10 @@ async function sendToToken(
     },
   );
   if (res.ok) return "sent";
-  // טוקן שכבר לא רשום — מנקים מהדאטהבייס
-  if (res.status === 404 || res.status === 400) {
+  const errorText = await res.text();
+  console.error(`[push] FCM ${res.status} for ${target.token.slice(0, 20)}…: ${errorText}`);
+  // רק טוקן שבאמת פג (UNREGISTERED) נמחק — לא כל שגיאת 400
+  if (res.status === 404 || errorText.includes("UNREGISTERED")) {
     await fetch(`https://firestore.googleapis.com/v1/${target.path}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${saToken}` },

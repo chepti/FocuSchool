@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
+import { attachForegroundNotifications } from "@/lib/push";
 import { PushButton } from "./PushButton";
 import type { ClassSchedule, SchoolEvent, StaffMember } from "@/lib/types";
 import { hebrewDayMonthLabel } from "@/lib/hebrew-date";
@@ -27,14 +28,25 @@ export function ParentZone({
   events: SchoolEvent[];
   schoolId?: string;
 }) {
-  const { user, member } = useMember(schoolId);
+  const { user, member, loading } = useMember(schoolId);
   const [schedules, setSchedules] = useState<ClassWithSchedule[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [openClass, setOpenClass] = useState<string | null>(null);
+  const [hintOpen, setHintOpen] = useState(false);
 
   const classes = member?.classes ?? [];
   const show =
     member != null && (member.role === "parent" || classes.length > 0);
+
+  // הודעות שמגיעות כשהאתר פתוח על המסך — מוצגות ידנית
+  useEffect(() => {
+    if (!user) return;
+    let detach: (() => void) | undefined;
+    attachForegroundNotifications().then((fn) => {
+      detach = fn;
+    });
+    return () => detach?.();
+  }, [user]);
 
   useEffect(() => {
     if (!show || classes.length === 0) return;
@@ -79,7 +91,36 @@ export function ParentZone({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, member, schoolId]);
 
-  if (!show) return null;
+  // מחובר אבל לא מזוהה (או הורה בלי כיתות) — כפתור "הורה?" עם הסבר
+  if (!show) {
+    if (loading || !user) return null;
+    return (
+      <section className="mx-auto max-w-6xl px-4 pt-4">
+        <button
+          type="button"
+          onClick={() => setHintOpen(!hintOpen)}
+          className="rounded-full px-3 py-1.5 text-xs font-medium text-brand-violet ring-1 ring-brand-violet/30 transition hover:bg-brand-purple/10"
+        >
+          הורה? 🤔
+        </button>
+        {hintOpen && (
+          <div className="mt-2 rounded-2xl bg-card p-4 text-sm leading-relaxed text-ink/80 shadow-sm ring-1 ring-ink/5">
+            <p>
+              מחוברים כ־
+              <span dir="ltr" className="font-medium">{user.email}</span>
+              {" "}אבל האתר עדיין לא מזהה אתכם כהורה בבית הספר.
+            </p>
+            <p className="mt-1">
+              ההרשאות מזוהות אוטומטית לפי כתובת המייל — בלי סיסמאות. אם אתם
+              הורים בבית הספר ולא רואים את הכיתה של ילדכם, פנו למחנכ/ת או
+              למזכירות ובקשו שיוסיפו את הכתובת הזו לרשימת ההורים. אחרי
+              ההוספה — פשוט היכנסו שוב.
+            </p>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   const grades = [...new Set(classes.map(gradeOf))];
   const today = new Date().toISOString().slice(0, 10);
@@ -97,9 +138,14 @@ export function ParentZone({
         <h2 className="text-xl font-medium text-ink">
           שלום{member.name ? ` ${member.name}` : ""} 👋
         </h2>
-        {classes.length > 0 && (
+        {classes.length > 0 ? (
           <p className="text-sm text-ink/60">
             הכיתות שלך: {classes.join(" · ")}
+          </p>
+        ) : (
+          <p className="text-sm text-ink/60">
+            לא משויכות לכם כיתות עדיין — פנו למחנכ/ת או למזכירות כדי לעדכן,
+            ותראו כאן מערכת שעות, אלפון מורים ואירועים של הכיתה.
           </p>
         )}
 

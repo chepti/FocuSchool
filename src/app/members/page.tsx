@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
-import type { Member } from "@/lib/types";
+import type { Member, MemberRole } from "@/lib/types";
 
 const SCHOOL_ID = "demo";
 
@@ -59,6 +66,68 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    classes: "",
+    phone: "",
+    role: "parent" as MemberRole,
+  });
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+
+  const myEmail = user?.email?.toLowerCase();
+
+  function startEdit(m: MemberRow) {
+    setEditing(m.email);
+    setEditForm({
+      name: m.name ?? "",
+      classes: m.classes?.join(" ") ?? "",
+      phone: m.phone ?? "",
+      role: m.role,
+    });
+  }
+
+  async function saveEdit(email: string) {
+    setRowBusy(email);
+    setError(null);
+    try {
+      const isSelf = email === myEmail;
+      const current = existing.find((m) => m.email === email);
+      await setDoc(doc(getDb(), "schools", SCHOOL_ID, "members", email), {
+        // אי אפשר להוריד לעצמך את ההרשאה — נשמר התפקיד הנוכחי
+        role: isSelf ? (current?.role ?? "admin") : editForm.role,
+        name: editForm.name.trim(),
+        classes: editForm.classes.split(/\s+/).filter(Boolean),
+        ...(editForm.phone.trim() ? { phone: editForm.phone.trim() } : {}),
+      });
+      setEditing(null);
+      await load();
+    } catch {
+      setError("העדכון נכשל");
+    } finally {
+      setRowBusy(null);
+    }
+  }
+
+  async function removeMember(m: MemberRow) {
+    if (
+      !window.confirm(
+        `למחוק את ${m.name ?? m.email} מרשימת החברים? ההרשאות שלו יבוטלו.`,
+      )
+    ) {
+      return;
+    }
+    setRowBusy(m.email);
+    setError(null);
+    try {
+      await deleteDoc(doc(getDb(), "schools", SCHOOL_ID, "members", m.email));
+      await load();
+    } catch {
+      setError("המחיקה נכשלה");
+    } finally {
+      setRowBusy(null);
+    }
+  }
 
   const load = useCallback(async () => {
     const snap = await getDocs(
@@ -237,28 +306,106 @@ export default function MembersPage() {
                     <th className="p-2 font-medium">תפקיד</th>
                     <th className="p-2 font-medium">כיתות</th>
                     <th className="p-2 font-medium">טלפון</th>
+                    <th className="p-2 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {existing.map((m) => (
-                    <tr key={m.email} className="border-t border-ink/5 text-ink">
-                      <td className="p-2">{m.name ?? ""}</td>
-                      <td className="p-2" dir="ltr">{m.email}</td>
-                      <td className="p-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${
-                            m.role === "parent"
-                              ? "bg-brand-blue/10 text-brand-blue"
-                              : "bg-brand-purple/10 text-brand-purple"
-                          }`}
-                        >
-                          {ROLE_LABELS[m.role] ?? m.role}
-                        </span>
-                      </td>
-                      <td className="p-2">{m.classes?.join(" ") ?? ""}</td>
-                      <td className="p-2" dir="ltr">{m.phone ?? ""}</td>
-                    </tr>
-                  ))}
+                  {existing.map((m) =>
+                    editing === m.email ? (
+                      <tr key={m.email} className="border-t border-ink/5 bg-surface/60 text-ink">
+                        <td className="p-2">
+                          <input
+                            value={editForm.name}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            className="w-24 rounded-lg bg-card p-1.5 text-sm ring-1 ring-ink/10"
+                          />
+                        </td>
+                        <td className="p-2 text-ink/50" dir="ltr">{m.email}</td>
+                        <td className="p-2">
+                          <select
+                            value={m.email === myEmail ? m.role : editForm.role}
+                            disabled={m.email === myEmail}
+                            onChange={(e) => setEditForm({ ...editForm, role: e.target.value as MemberRole })}
+                            className="rounded-lg bg-card p-1.5 text-sm ring-1 ring-ink/10 disabled:opacity-50"
+                          >
+                            {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-2">
+                          <input
+                            value={editForm.classes}
+                            onChange={(e) => setEditForm({ ...editForm, classes: e.target.value })}
+                            placeholder="ב2 ה1"
+                            className="w-20 rounded-lg bg-card p-1.5 text-sm ring-1 ring-ink/10"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            dir="ltr"
+                            className="w-28 rounded-lg bg-card p-1.5 text-sm ring-1 ring-ink/10"
+                          />
+                        </td>
+                        <td className="p-2 whitespace-nowrap">
+                          <button
+                            type="button"
+                            disabled={rowBusy === m.email}
+                            onClick={() => saveEdit(m.email)}
+                            className="rounded-full bg-brand-purple px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                          >
+                            שמירה
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditing(null)}
+                            className="ms-1 rounded-full px-2 py-1 text-xs text-ink/50 hover:text-ink"
+                          >
+                            ביטול
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={m.email} className="border-t border-ink/5 text-ink">
+                        <td className="p-2">{m.name ?? ""}</td>
+                        <td className="p-2" dir="ltr">{m.email}</td>
+                        <td className="p-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs ${
+                              m.role === "parent"
+                                ? "bg-brand-blue/10 text-brand-blue"
+                                : "bg-brand-purple/10 text-brand-purple"
+                            }`}
+                          >
+                            {ROLE_LABELS[m.role] ?? m.role}
+                          </span>
+                        </td>
+                        <td className="p-2">{m.classes?.join(" ") ?? ""}</td>
+                        <td className="p-2" dir="ltr">{m.phone ?? ""}</td>
+                        <td className="p-2 whitespace-nowrap text-xs">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(m)}
+                            className="rounded-full px-2 py-1 font-medium text-brand-violet hover:bg-brand-purple/10"
+                          >
+                            עריכה
+                          </button>
+                          {m.email !== myEmail && (
+                            <button
+                              type="button"
+                              disabled={rowBusy === m.email}
+                              onClick={() => removeMember(m)}
+                              className="rounded-full px-2 py-1 font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              מחיקה
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>
