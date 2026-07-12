@@ -276,6 +276,14 @@ export const demoStaff: StaffMember[] = [
     email: "ronit@ofek-demo.school",
     phone: "050-0000000",
   },
+  {
+    // ללא כיתות — לא מופיע באלפון הכיתתי, אבל כן ברשימת הנמענים לפניות
+    id: "s5",
+    name: "הנהלת בית הספר",
+    subjects: ["הנהלה"],
+    classes: [],
+    email: "chepti@gmail.com",
+  },
 ];
 
 /** קישורי אלבום מוגנים לפריטי תמונות — נזרעים ל-items/{id}/private/parents */

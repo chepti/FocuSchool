@@ -73,17 +73,25 @@
 - **אזור אישי:** סקשן "הודעות מהצוות" — עדכון שבועי אחרון לכל כיתה, תזכורות והודעות אישיות שלי (סינון לפי emails/classes/שכבות, רק sendAt<=now).
 - **rules:** messages — קריאה isCommunity, כתיבה isStaff; members — קריאה גם ל-publisher (מורים צריכים רשימת הורים לבחירת יעדים). *הערה: פרטיות הודעות targeted נאכפת ב-UI וב-push בלבד — הקשחה עתידית אם יידרש.* פרוסים.
 - נבדק: build נקי, `/message` נטען (חסום ללא צוות), dispatch בפרודקשן. **DoD ידני נותר:** מורה שולח עדכון שבועי ← הורה רואה + מקבל push; תזכורת מתוזמנת נשלחת בסבב היומי.
-- נותר בשלב 3: 3.2 (צ'קליסטים), 3.5 (רשימות שיבוץ), 3.6 (פניות עם digest).
+
+**שלב 3 — מודולים 3.2+3.5+3.6 בנויים (2026-07-13):**
+
+- **3.2 צ'קליסטים** — `checklists/{id}` (title, classId?, emails=הורים במעקב, items=[{id,text}]) + `marks/{email}` (homeChecked/classChecked — מערכי itemIds). **סימון כפול בזמן אמת** (onSnapshot דו-כיווני): מסך `/checklists` לצוות — יצירה (כיתה→בחירת הורים→משימות שורה-שורה) ומטריצה למסומן-בכיתה; פאנל "משימות במעקב" לְהורה באזור האישי למסומן-בבית. rules אוכפים שהורה נוגע רק ב-homeChecked של עצמו (diff.affectedKeys). מחיקת צ'קליסט מוחקת קודם את ה-marks (אין cascade ב-Firestore).
+- **3.5 שיבוצים** — `signups/{id}` (title, classes יעד, slots=[{id,label,max}], counts) + `entries/{email}` ({slotId,name,at} — מסמך אחד להורה). הרשמה/ביטול/החלפה ב-**runTransaction** שקורא counts+entry ונכשל אם מלא — משבצת מלאה ננעלת בלי דריסות. מסך `/signups` לצוות (יצירה: "מגש פירות, 3" שורה-שורה + מי נרשם), פאנל "מתנדבים ומביאים" להורה. rules: הורה מעדכן רק counts (בטרנזקציה) ו-entry של עצמו; שקיפות מלאה בקריאה.
+- **3.6 פניות** — `inquiries/{id}` (toEmail, fromEmail/Name, body, notified, done?). טופס "פנייה לצוות" באזור האישי (נמענים = staff עם מייל; s5 "הנהלת בית הספר"=chepti נוסף לדמו). ב-`/manage`: תיבת "פניות אליי" (בזמן אמת, טופל ✓, תשובה במייל) + בחירת digest (מיידי/יומי/שבועי — נשמר בשדה digest ב-member; rule מאפשר לחבר לעדכן לעצמו רק אותו). **ה-dispatch מטפל גם בפניות:** POST (אחרי יצירה) שולח רק לנמעני immediate; GET (cron יומי) שולח יומי + שבועי (בימי ראשון), התראה אחת מרוכזת לנמען ("N פניות ממתינות"), מסמן notified.
+- נבדק: build נקי, כל הדפים נטענים, rules פרוסים, דמו נזרע. **DoD ידני:** סימון דו-צדדי חי בצ'קליסט; משבצת מלאה ננעלת משני מכשירים; פנייה מגיעה כ-push לנמען.
 
 ### מפת קבצים
 
 ```
 src/app/            layout (פונט/metadata), page (דף הבית), add/, manage/, members/,
-                    message/ (כתיבת הודעה לצוות), api/push/ (בדיקת FCM),
-                    api/messages/dispatch/ (שליחת הודעות שהגיע זמנן),
+                    message/ (כתיבת הודעה), checklists/ (מעקב משימות לצוות),
+                    signups/ (שיבוצים לצוות), api/push/ (בדיקת FCM),
+                    api/messages/dispatch/ (הודעות שהגיע זמנן + פניות/digest),
                     icon.svg, manifest.ts, sitemap.ts, robots.ts
 src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
-                    ParentZone (אזור אישי+הודעות), PushButton, EventsCalendar, Footer
+                    ParentZone (אזור אישי+הודעות), ChecklistsPanel, SignupsPanel,
+                    InquiryForm, PushButton, EventsCalendar, Footer
 src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
                     demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook),
                     push (הרשמה+foreground), push-server (עזרי FCM/Firestore לשרת)
@@ -141,8 +149,11 @@ schools/{schoolId} ✅            name, description, city, icalUrl?, calendarId?
   staff/{staffId} ✅             אלפון: name, subjects[], classes[], email?, phone?
   messages/{messageId} ✅        type: weekly|reminder|targeted, title?, body,
                                  homework?, classes[], emails[], sendAt, pending, sentAt?
-  checklists/{checklistId} 🔜    לפי מודול 3.2
-  signups/{signupId} 🔜          לפי מודול 3.5
+  checklists/{checklistId} ✅    title, classId?, emails[], items[{id,text}]
+    marks/{email} ✅             homeChecked[] (הורה), classChecked[] (מורה)
+  signups/{signupId} ✅          title, classes[], slots[{id,label,max}], counts{}
+    entries/{email} ✅           slotId, name, at — נרשם בטרנזקציה מול counts
+  inquiries/{inquiryId} ✅       toEmail, fromEmail/Name, body, notified, done?
   polls/{pollId} 🔜              לפי מודול 4
 ```
 

@@ -93,6 +93,8 @@ export interface MemberInfo {
   /** נתיב המסמך המלא ב-REST */
   path: string;
   classes: string[];
+  /** העדפת התראות על פניות — ברירת מחדל immediate */
+  digest: "immediate" | "daily" | "weekly";
 }
 
 export async function listMembers(
@@ -109,16 +111,23 @@ export async function listMembers(
       name: string;
       fields?: {
         classes?: { arrayValue?: { values?: { stringValue?: string }[] } };
+        digest?: { stringValue?: string };
       };
     }[];
   };
-  return (data.documents ?? []).map((d) => ({
-    email: decodeURIComponent(d.name.split("/").pop() as string),
-    path: d.name,
-    classes: (d.fields?.classes?.arrayValue?.values ?? [])
-      .map((v) => v.stringValue)
-      .filter((v): v is string => Boolean(v)),
-  }));
+  return (data.documents ?? []).map((d) => {
+    const digest = d.fields?.digest?.stringValue;
+    return {
+      email: decodeURIComponent(d.name.split("/").pop() as string),
+      path: d.name,
+      classes: (d.fields?.classes?.arrayValue?.values ?? [])
+        .map((v) => v.stringValue)
+        .filter((v): v is string => Boolean(v)),
+      digest: (digest === "daily" || digest === "weekly"
+        ? digest
+        : "immediate") as MemberInfo["digest"],
+    };
+  });
 }
 
 export interface TokenDoc {

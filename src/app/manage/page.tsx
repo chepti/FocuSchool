@@ -7,13 +7,15 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   query,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { isStaff, useMember } from "@/lib/useMember";
-import type { StripItem } from "@/lib/types";
+import type { DigestPref, Inquiry, StripItem } from "@/lib/types";
 
 const SCHOOL_ID = "demo";
 
@@ -31,8 +33,51 @@ export default function ManagePage() {
   const [pushBody, setPushBody] = useState("");
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [digest, setDigest] = useState<DigestPref>("immediate");
 
   const staff = isStaff(member);
+  const myEmail = user?.email?.toLowerCase();
+
+  useEffect(() => {
+    if (member?.digest) setDigest(member.digest);
+  }, [member]);
+
+  // פניות אליי — בזמן אמת (המיון בצד הלקוח, בלי אינדקס מורכב)
+  useEffect(() => {
+    if (!myEmail) return;
+    return onSnapshot(
+      query(
+        collection(getDb(), "schools", SCHOOL_ID, "inquiries"),
+        where("toEmail", "==", myEmail),
+      ),
+      (snap) =>
+        setInquiries(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as Inquiry)
+            .filter((i) => !i.done)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        ),
+      () => setInquiries([]),
+    );
+  }, [myEmail]);
+
+  async function saveDigest(pref: DigestPref) {
+    if (!myEmail) return;
+    setDigest(pref);
+    await setDoc(
+      doc(getDb(), "schools", SCHOOL_ID, "members", myEmail),
+      { digest: pref },
+      { merge: true },
+    ).catch(() => {});
+  }
+
+  async function markDone(inquiry: Inquiry) {
+    await updateDoc(
+      doc(getDb(), "schools", SCHOOL_ID, "inquiries", inquiry.id),
+      { done: true },
+    ).catch(() => {});
+  }
 
   async function sendPush() {
     if (!user || !pushTitle.trim()) return;
@@ -126,14 +171,28 @@ export default function ManagePage() {
         <Link href="/" className="text-sm text-brand-violet">
           → חזרה לדף הבית
         </Link>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {staff && (
-            <Link
-              href="/message"
-              className="rounded-full bg-brand-purple px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-violet"
-            >
-              ✍️ הודעה להורים
-            </Link>
+            <>
+              <Link
+                href="/message"
+                className="rounded-full bg-brand-purple px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-violet"
+              >
+                ✍️ הודעה להורים
+              </Link>
+              <Link
+                href="/checklists"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
+              >
+                📋 צ'קליסטים
+              </Link>
+              <Link
+                href="/signups"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-violet ring-1 ring-brand-violet/40 transition hover:bg-brand-purple/10"
+              >
+                🧺 שיבוצים
+              </Link>
+            </>
           )}
           {member?.role === "admin" && (
             <Link
@@ -252,6 +311,79 @@ export default function ManagePage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {staff && (
+        <div className="mt-6 rounded-2xl bg-card p-6 shadow-sm ring-1 ring-ink/5">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-medium text-ink">
+              פניות אליי ✉️
+              {inquiries.length > 0 && (
+                <span className="ms-2 rounded-full bg-brand-pink/10 px-2 py-0.5 text-sm text-brand-pink">
+                  {inquiries.length}
+                </span>
+              )}
+            </h2>
+            <label className="flex items-center gap-2 text-xs text-ink/60">
+              התראות על פניות:
+              <select
+                value={digest}
+                onChange={(e) => saveDigest(e.target.value as DigestPref)}
+                className="rounded-lg bg-surface p-1.5 text-xs text-ink ring-1 ring-ink/10"
+              >
+                <option value="immediate">מיידי</option>
+                <option value="daily">סיכום יומי</option>
+                <option value="weekly">סיכום שבועי</option>
+              </select>
+            </label>
+          </div>
+
+          {inquiries.length === 0 ? (
+            <p className="text-sm text-ink/60">אין פניות פתוחות. 🎉</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-2">
+              {inquiries.map((i) => (
+                <li
+                  key={i.id}
+                  className="rounded-xl bg-surface p-3 ring-1 ring-ink/10"
+                >
+                  <div className="mb-1 flex items-baseline gap-2 text-xs">
+                    <span className="font-medium text-brand-violet">
+                      {i.fromName ?? i.fromEmail}
+                    </span>
+                    <span className="text-ink/40" dir="ltr">
+                      {i.fromEmail}
+                    </span>
+                    <span className="text-ink/40">
+                      {new Date(i.createdAt).toLocaleDateString("he-IL", {
+                        day: "numeric",
+                        month: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-line text-sm text-ink/80">
+                    {i.body}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <a
+                      href={`mailto:${i.fromEmail}`}
+                      className="rounded-full px-3 py-1 text-xs font-medium text-brand-violet ring-1 ring-brand-violet/30 hover:bg-brand-purple/10"
+                    >
+                      תשובה במייל
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => markDone(i)}
+                      className="rounded-full px-3 py-1 text-xs font-medium text-green-700 ring-1 ring-green-300 hover:bg-green-50"
+                    >
+                      טופל ✓
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </main>

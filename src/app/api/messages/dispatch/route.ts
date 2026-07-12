@@ -138,15 +138,125 @@ function notificationTitle(message: PendingMessage): string {
   return "תזכורת מבית הספר";
 }
 
-async function dispatch(): Promise<Response> {
+interface PendingInquiry {
+  path: string;
+  toEmail: string;
+  fromName?: string;
+  body: string;
+}
+
+async function pendingInquiries(saToken: string): Promise<PendingInquiry[]> {
+  const res = await fetch(`${FIRESTORE}/schools/${SCHOOL_ID}:runQuery`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${saToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "inquiries" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "notified" },
+            op: "EQUAL",
+            value: { booleanValue: false },
+          },
+        },
+        limit: 100,
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`inquiries query: ${res.status}`);
+  const rows = (await res.json()) as {
+    document?: { name: string; fields: Record<string, FsValue> };
+  }[];
+  return rows
+    .filter((r) => r.document)
+    .map((r) => {
+      const f = r.document!.fields;
+      return {
+        path: r.document!.name,
+        toEmail: (str(f["toEmail"]) ?? "").toLowerCase(),
+        fromName: str(f["fromName"]),
+        body: str(f["body"]) ?? "",
+      };
+    });
+}
+
+async function markNotified(saToken: string, path: string): Promise<void> {
+  await fetch(
+    `https://firestore.googleapis.com/v1/${path}?updateMask.fieldPaths=notified`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${saToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fields: { notified: { booleanValue: true } } }),
+    },
+  ).catch(() => {});
+}
+
+/**
+ * התראות על פניות לפי העדפת הנמען: immediate — בכל קריאה;
+ * daily — רק בסבב היומי (cron); weekly — רק בסבב היומי של יום ראשון.
+ * לכל נמען נשלחת התראה אחת מרוכזת ("N פניות ממתינות").
+ */
+async function dispatchInquiries(
+  saToken: string,
+  members: MemberInfo[],
+  isCron: boolean,
+): Promise<number> {
+  const due = await pendingInquiries(saToken);
+  if (due.length === 0) return 0;
+
+  const isSunday = new Date().getUTCDay() === 0;
+  const byRecipient = new Map<string, PendingInquiry[]>();
+  for (const inquiry of due) {
+    byRecipient.set(inquiry.toEmail, [
+      ...(byRecipient.get(inquiry.toEmail) ?? []),
+      inquiry,
+    ]);
+  }
+
+  let sent = 0;
+  for (const [toEmail, inquiries] of byRecipient) {
+    const recipient = members.find((m) => m.email.toLowerCase() === toEmail);
+    // נמען שאינו חבר — מסמנים כדי שלא יצטבר; הפנייה עדיין גלויה באתר
+    const pref = recipient?.digest ?? "immediate";
+    const shouldSend =
+      pref === "immediate" ||
+      (isCron && (pref === "daily" || (pref === "weekly" && isSunday)));
+    if (!shouldSend) continue;
+
+    await Promise.all(inquiries.map((i) => markNotified(saToken, i.path)));
+
+    if (recipient) {
+      const tokens = await tokensForMembers(saToken, [recipient]);
+      const title =
+        inquiries.length === 1
+          ? `פנייה חדשה${inquiries[0].fromName ? ` מ${inquiries[0].fromName}` : ""} ✉️`
+          : `${inquiries.length} פניות ממתינות לך ✉️`;
+      const body =
+        inquiries.length === 1
+          ? inquiries[0].body.slice(0, 150)
+          : "היכנסו למסך הניהול כדי לקרוא ולהשיב";
+      const results = await Promise.all(
+        tokens.map((t) => sendToToken(saToken, t, title, body)),
+      );
+      sent += results.filter((r) => r === "sent").length;
+    }
+  }
+  return sent;
+}
+
+async function dispatch(isCron: boolean): Promise<Response> {
   try {
     const saToken = await serviceAccountToken();
-    const due = await pendingMessages(saToken);
-    if (due.length === 0) {
-      return Response.json({ dispatched: 0, sent: 0 });
-    }
-
-    const members = await listMembers(saToken, SCHOOL_ID);
+    const [due, members] = await Promise.all([
+      pendingMessages(saToken),
+      listMembers(saToken, SCHOOL_ID),
+    ]);
     let sent = 0;
     let dispatched = 0;
 
@@ -170,18 +280,21 @@ async function dispatch(): Promise<Response> {
       sent += results.filter((r) => r === "sent").length;
     }
 
-    return Response.json({ dispatched, sent });
+    const inquiriesSent = await dispatchInquiries(saToken, members, isCron);
+
+    return Response.json({ dispatched, sent, inquiriesSent });
   } catch (error) {
     console.error("[dispatch]", error);
     return Response.json({ error: "internal" }, { status: 500 });
   }
 }
 
-// GET — ל-Vercel Cron; POST — ממסך הכתיבה אחרי יצירת הודעה
+// GET — ל-Vercel Cron (כולל סיכומים יומיים/שבועיים);
+// POST — ממסכי הכתיבה/הפנייה (מיידי בלבד)
 export async function GET() {
-  return dispatch();
+  return dispatch(true);
 }
 
 export async function POST() {
-  return dispatch();
+  return dispatch(false);
 }

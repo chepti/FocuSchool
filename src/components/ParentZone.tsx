@@ -15,6 +15,9 @@ import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
 import { attachForegroundNotifications } from "@/lib/push";
 import { PushButton } from "./PushButton";
+import { ChecklistsPanel } from "./ChecklistsPanel";
+import { SignupsPanel } from "./SignupsPanel";
+import { InquiryForm } from "./InquiryForm";
 import type {
   ClassSchedule,
   SchoolEvent,
@@ -263,6 +266,21 @@ export function ParentZone({
           </div>
         )}
 
+        {user?.email && (
+          <>
+            <ChecklistsPanel
+              schoolId={schoolId}
+              email={user.email.toLowerCase()}
+            />
+            <SignupsPanel
+              schoolId={schoolId}
+              email={user.email.toLowerCase()}
+              displayName={member.name ?? user.email}
+              classes={classes}
+            />
+          </>
+        )}
+
         {myEvents.length > 0 && (
           <div className="mt-4">
             <h3 className="mb-2 text-sm font-medium text-brand-violet">
@@ -400,6 +418,14 @@ export function ParentZone({
               ))}
             </ul>
           </div>
+        )}
+
+        {user?.email && (
+          <InquiryForm
+            schoolId={schoolId}
+            email={user.email.toLowerCase()}
+            displayName={member.name ?? user.email}
+          />
         )}
       </div>
     </section>

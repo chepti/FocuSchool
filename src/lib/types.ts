@@ -42,6 +42,9 @@ export interface StripItem {
 
 export type MemberRole = "admin" | "publisher" | "contributor" | "parent";
 
+/** העדפת קבלת התראות על פניות: מיידי / סיכום יומי / סיכום שבועי */
+export type DigestPref = "immediate" | "daily" | "weekly";
+
 /** חבר צוות/קהילה — מזוהה לפי כתובת מייל (מזהה המסמך, באותיות קטנות) */
 export interface Member {
   role: MemberRole;
@@ -49,6 +52,8 @@ export interface Member {
   /** שיוך לכיתות, למשל ["ב2", "ה1"] — בעיקר להורים */
   classes?: string[];
   phone?: string;
+  /** ברירת מחדל: immediate */
+  digest?: DigestPref;
 }
 
 export interface Lesson {
@@ -103,6 +108,72 @@ export interface SchoolMessage {
   /** ממתין לשליחת push? ה-dispatch מוריד את הדגל וקובע sentAt */
   pending: boolean;
   sentAt?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
+/**
+ * צ'קליסט במעקב — checklists/{id}. המורה בוחר הורים במעקב (emails);
+ * הסימונים במסמכי משנה marks/{email}: ההורה מסמן בוצע-בבית,
+ * המורה מסמן בוצע-בכיתה.
+ */
+export interface Checklist {
+  id: string;
+  title: string;
+  classId?: string;
+  emails: string[];
+  items: ChecklistItem[];
+  createdBy: string;
+  createdAt: string; // ISO
+}
+
+/** marks/{email} — homeChecked נכתב רק ע"י ההורה, classChecked רק ע"י צוות */
+export interface ChecklistMarks {
+  homeChecked?: string[];
+  classChecked?: string[];
+}
+
+export interface SignupSlot {
+  id: string;
+  label: string;
+  max: number;
+}
+
+/**
+ * רשימת שיבוץ/כיבוד — signups/{id}. counts מתוחזק בטרנזקציה יחד עם
+ * ה-entry (entries/{email}) כדי לנעול משבצת מלאה בלי דריסות.
+ */
+export interface Signup {
+  id: string;
+  title: string;
+  /** כיתות יעד; ריק = כל בית הספר */
+  classes: string[];
+  slots: SignupSlot[];
+  counts: Record<string, number>;
+  createdBy: string;
+  createdAt: string; // ISO
+}
+
+/** entries/{email} — שיבוץ של הורה אחד */
+export interface SignupEntry {
+  slotId: string;
+  name?: string;
+  at: string; // ISO
+}
+
+/** פנייה לצוות — inquiries/{id}; notified מנוהל ע"י ה-dispatch */
+export interface Inquiry {
+  id: string;
+  toEmail: string;
+  fromEmail: string;
+  fromName?: string;
+  body: string;
+  createdAt: string; // ISO
+  notified: boolean;
+  done?: boolean;
 }
 
 export interface SchoolEvent {

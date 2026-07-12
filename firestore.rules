@@ -40,6 +40,11 @@ service cloud.firestore {
                     && (request.auth.token.email.lower() == email
                         || isStaff(schoolId));
         allow write: if isSignedIn() && memberRole(schoolId) == 'admin';
+        // כל חבר רשאי לעדכן לעצמו את העדפת ההתראות בלבד
+        allow update: if isSignedIn()
+                      && request.auth.token.email.lower() == email
+                      && request.resource.data.diff(resource.data)
+                           .affectedKeys().hasOnly(['digest']);
 
         // טוקני נוטיפיקציות — כל חבר מנהל רק את של עצמו.
         // השליחה נעשית בשרת עם service account (עוקף rules).
@@ -88,6 +93,65 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isCommunity(schoolId);
         allow create, update, delete: if isStaff(schoolId);
+      }
+
+      // צ'קליסטים במעקב (מודול 3.2) — המורה יוצר; הסימונים ב-marks
+      match /checklists/{checklistId} {
+        allow read: if isCommunity(schoolId);
+        allow create, update, delete: if isStaff(schoolId);
+
+        // סימון כפול: ההורה (בעל המסמך) נוגע רק ב-homeChecked;
+        // הצוות מסמן classChecked (ויכול הכול)
+        match /marks/{email} {
+          allow read: if isStaff(schoolId)
+                      || (isSignedIn()
+                          && request.auth.token.email.lower() == email);
+          allow create: if isStaff(schoolId)
+                        || (isSignedIn()
+                            && request.auth.token.email.lower() == email
+                            && request.resource.data.keys()
+                                 .hasOnly(['homeChecked']));
+          allow update: if isStaff(schoolId)
+                        || (isSignedIn()
+                            && request.auth.token.email.lower() == email
+                            && request.resource.data.diff(resource.data)
+                                 .affectedKeys().hasOnly(['homeChecked']));
+          allow delete: if isStaff(schoolId);
+        }
+      }
+
+      // רשימות שיבוץ/כיבוד (מודול 3.5) — הצוות יוצר; הורים נרשמים
+      match /signups/{signupId} {
+        allow read: if isCommunity(schoolId);
+        allow create, delete: if isStaff(schoolId);
+        // הורה מעדכן רק את מונה המשבצות — בטרנזקציה יחד עם ה-entry שלו
+        allow update: if isStaff(schoolId)
+                      || (isCommunity(schoolId)
+                          && request.resource.data.diff(resource.data)
+                               .affectedKeys().hasOnly(['counts']));
+
+        match /entries/{email} {
+          // שקיפות: כולם רואים מי הביא מה
+          allow read: if isCommunity(schoolId);
+          allow write: if isStaff(schoolId)
+                       || (isSignedIn()
+                           && request.auth.token.email.lower() == email);
+        }
+      }
+
+      // פניות לצוות (מודול 3.6) — הפונה יוצר; הנמען קורא ומסמן טופל
+      match /inquiries/{inquiryId} {
+        allow create: if isCommunity(schoolId)
+                      && request.resource.data.fromEmail
+                           == request.auth.token.email.lower()
+                      && request.resource.data.notified == false;
+        allow read: if isSignedIn()
+                    && (resource.data.toEmail == request.auth.token.email.lower()
+                        || resource.data.fromEmail == request.auth.token.email.lower()
+                        || memberRole(schoolId) == 'admin');
+        allow update, delete: if isSignedIn()
+                              && resource.data.toEmail
+                                   == request.auth.token.email.lower();
       }
 
       // הערה: כשנוסיף מידע-צוות לאירועים, הוא יישב במסמך משנה נפרד
