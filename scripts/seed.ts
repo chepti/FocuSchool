@@ -15,7 +15,10 @@ import {
   demoStrips,
 } from "../src/lib/demo-data";
 
-const PROJECT_ID = "focuschool-aa45d";
+// כל אלה ניתנים לשינוי ע"י בית ספר שמעתיק את הפרויקט (ראו README):
+//   NEXT_PUBLIC_FIREBASE_PROJECT_ID · NEXT_PUBLIC_SCHOOL_ID/NAME/CITY · SEED_ADMIN_EMAIL
+const PROJECT_ID =
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "focuschool-aa45d";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // client_id/secret ציבוריים של firebase-tools (מוטמעים בקוד הפתוח של ה-CLI)
@@ -97,20 +100,37 @@ async function setDoc(
   console.log(`✓ ${path}`);
 }
 
-// חברי בית הספר — מזהה המסמך הוא כתובת המייל באותיות קטנות.
-// לאדמין יש כיתה כדי שתוכל לראות ולבדוק את האזור האישי של הורה.
+// האדמין הראשון — מזהה המסמך הוא כתובת המייל באותיות קטנות.
+// לבית ספר חדש: SEED_ADMIN_EMAIL=you@gmail.com npm run seed
+const ADMIN_EMAIL = (
+  process.env.SEED_ADMIN_EMAIL ?? "chepti@gmail.com"
+).toLowerCase();
+
+// לאדמין יש כיתה כדי שיוכל לראות ולבדוק גם את האזור האישי של הורה.
 const members: Record<
   string,
   { role: string; name: string; classes?: string[] }
 > = {
-  "chepti@gmail.com": { role: "admin", name: "חפציבה", classes: ["ב2"] },
+  [ADMIN_EMAIL]: {
+    role: "admin",
+    name: process.env.SEED_ADMIN_NAME ?? "חפציבה",
+    classes: ["ב2"],
+  },
 };
 
 async function main() {
   const token = await getAccessToken();
-  const school = `schools/${demoSchool.id}`;
 
-  await setDoc(token, school, { ...demoSchool });
+  // בית ספר חדש דורס רק את השם/העיר/המזהה — שאר תוכן הדמו נשאר כנקודת פתיחה
+  const schoolDoc = {
+    ...demoSchool,
+    id: process.env.NEXT_PUBLIC_SCHOOL_ID ?? demoSchool.id,
+    name: process.env.NEXT_PUBLIC_SCHOOL_NAME ?? demoSchool.name,
+    city: process.env.NEXT_PUBLIC_SCHOOL_CITY ?? demoSchool.city,
+  };
+  const school = `schools/${schoolDoc.id}`;
+
+  await setDoc(token, school, { ...schoolDoc });
 
   for (const [email, member] of Object.entries(members)) {
     await setDoc(token, `${school}/members/${email}`, member);

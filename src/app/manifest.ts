@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
-import { demoSchool } from "@/lib/demo-data";
+import { SCHOOL_DESCRIPTION, SCHOOL_NAME } from "@/lib/config";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${demoSchool.name} — פוקוסקול`,
-    short_name: demoSchool.name,
-    description: demoSchool.description,
+    name: `${SCHOOL_NAME} — פוקוסקול`,
+    short_name: SCHOOL_NAME,
+    description: SCHOOL_DESCRIPTION,
     start_url: "/",
     display: "standalone",
     dir: "rtl",

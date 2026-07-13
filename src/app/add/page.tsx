@@ -15,7 +15,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getAuthClient } from "@/lib/firebase";
 import type { StripType } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 
 const GRADIENTS = [
   "from-brand-pink to-brand-purple",

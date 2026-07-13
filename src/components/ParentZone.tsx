@@ -26,6 +26,7 @@ import type {
   StaffMember,
 } from "@/lib/types";
 import { hebrewDayMonthLabel } from "@/lib/hebrew-date";
+import { SCHOOL_ID } from "@/lib/config";
 
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי"];
 
@@ -41,7 +42,7 @@ interface ClassWithSchedule {
 
 export function ParentZone({
   events,
-  schoolId = "demo",
+  schoolId = SCHOOL_ID,
 }: {
   events: SchoolEvent[];
   schoolId?: string;

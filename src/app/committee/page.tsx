@@ -16,7 +16,7 @@ import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
 import type { FeeRecord, Member, Poll, PollVote } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 const GRADIENTS = [
   "from-brand-pink to-brand-purple",
   "from-brand-purple to-brand-blue",

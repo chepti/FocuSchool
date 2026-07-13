@@ -91,7 +91,12 @@
   - קישור ל-`/signups` — הוועד מורשה ליצור רשימות (אירועי כיתה/אישורי הגעה); ה-rules והמסך עודכנו.
 - **PollsPanel** באזור האישי: הצבעה בלחיצה, תוצאות נחשפות אחרי הצבעה או בסגירה, מסונן לפי כיתות. הוועד רואה את האזור האישי גם בלי classes.
 - rules פרוסים; members read הורחב לוועד (לניהול דמי ועד).
-- **נותר משלב 4: שכפול בתי ספר (multi-tenant)** — רפקטור גדול: SCHOOL_ID קשיח בכל המסכים → routing `/s/{schoolId}` או סאב-דומיין (החלטת מוצר!), מסך יצירת בית ספר (batch: school+admin member, ואז strips ברירת מחדל), onboarding מודרך. מומלץ סשן ייעודי.
+**שכפול בתי ספר — הוכרעה גישת fork-and-deploy (2026-07-13), לא multi-tenant מתארח:**
+
+- **החלטת מוצר:** כל בית ספר מעתיק (fork) את המאגר, מחבר Firebase + Vercel *משלו*, ומריץ עותק עצמאי — מסד נפרד, דומיין נפרד, אפס עלות לבית הספר המקורי, אפס סיכון חיוב משותף. עדיף על `/s/{schoolId}` מתארח: מתאים בול לאילוץ "חינם באמת" ולפרטיות (אף בית ספר לא רואה נתוני אחר), ונמנע מהתנגשות Service Worker/Auth-session שקיימת כשמארחים כמה בתי ספר על אותו origin.
+- **רפקטור שבוצע:** כל ההגדרות הניתנות לשינוי רוכזו ב-`src/lib/config.ts` (firebaseConfig, SCHOOL_ID, SCHOOL_NAME/CITY/DESCRIPTION, SITE_URL) — כולן נקראות מ-env עם דמו כברירת מחדל, כך שהדמו ממשיך לעבוד ללא env. הוסרו כל ה-`const SCHOOL_ID = "demo"` הקשיחים (13 קבצים). ה-service worker קורא את קונפיג ה-Firebase מפרמטרי ה-URL בעת הרישום (קובץ סטטי לא רואה env). `seed.ts` נעשה env-driven (PROJECT_ID, SCHOOL_ID/NAME/CITY, SEED_ADMIN_EMAIL/NAME). manifest/layout משתמשים ב-config.
+- **תיעוד:** `.env.example` (מותר ב-gitignore דרך `!.env.example`) + README מלא עם מדריך הקמה שלב-אחר-שלב (Firebase→env→Vercel→rules→seed→authorized domains) וסעיף על הורים/מורים בכמה בתי ספר (זהות Google משותפת, הפרדת נתונים מלאה, PWA+נוטיפיקציות נפרדים לכל בית ספר).
+- **נותר (אופציונלי, שיפור UX):** מסך "צור בית ספר" בתוך האתר במקום env ידני; routing סאב-דומיין; onboarding מודרך. לא חוסם — בית ספר יכול לעלות היום לפי ה-README.
 
 **מרכז עזרה `/help` (2026-07-13):** דף סטטי בעיצוב האתר — חיפוש חי (מסנן מדריכים+FAQ ופותח תוצאות), 4 קטגוריות (מתחילים/הורים/צוות/מנהל), ~20 מדריכי אקורדיון (intro/steps/points/tip) ו-12 שאלות נפוצות. תוכן ב-`src/lib/help-content.ts`, רינדור ב-`HelpCenter.tsx`. צילומי מסך ציבוריים ב-`public/help/` (נוצרו ב-headless Chrome + חיתוך .NET; מסכי in-app של חברים מחוברים — להוסיף ידנית בעתיד). קישור בפוטר.
 
@@ -107,7 +112,8 @@ src/app/            layout (פונט/metadata), page (דף הבית), add/, mana
 src/components/     Header, AuthButton, StripRow, PhotosRow (תמונות+אלבום מוגן),
                     ParentZone (אזור אישי+הודעות), ChecklistsPanel, SignupsPanel,
                     PollsPanel, InquiryForm, PushButton, EventsCalendar, Footer
-src/lib/            types, firebase (קונפיג+getDb/getAuthClient), data (getSchoolData),
+src/lib/            config (env לכל בית ספר — SCHOOL_ID/NAME, firebaseConfig, SITE_URL),
+                    types, firebase (getDb/getAuthClient), data (getSchoolData),
                     demo-data, hebrew-date (גימטריה), ical (מפענח ICS), useMember (hook),
                     push (הרשמה+foreground), push-server (עזרי FCM/Firestore לשרת)
 public/firebase-messaging-sw.js   service worker לקבלת push ברקע

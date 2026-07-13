@@ -6,6 +6,7 @@ import {
   tokensForMembers,
   type MemberInfo,
 } from "@/lib/push-server";
+import { SCHOOL_ID } from "@/lib/config";
 
 /**
  * שולח push לכל ההודעות שהגיע זמנן (pending && sendAt <= now) ומסמן sentAt.
@@ -14,8 +15,6 @@ import {
  * ללא אימות בכוונה: הפעולה בטוחה — שולחת רק מה שממילא מתוזמן, ואידמפוטנטית
  * (הדגל pending יורד לפני השליחה).
  */
-
-const SCHOOL_ID = "demo";
 
 interface PendingMessage {
   path: string;

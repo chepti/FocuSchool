@@ -14,7 +14,7 @@ import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
 import type { Member, MemberRole } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "ניהול",

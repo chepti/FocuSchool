@@ -1,27 +1,9 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { firebaseConfig } from "./config";
 
-// קונפיגורציה ציבורית של אפליקציית הווב — לא סוד (האבטחה נאכפת ב-Security Rules).
-// ניתן לעקוף עם משתני סביבה, למשל לבדיקות מול פרויקט אחר.
-const firebaseConfig = {
-  apiKey:
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ??
-    "AIzaSyD8izbQwpjZL7c-3dwD3tmcWD4LL0NDjcA",
-  authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??
-    "focuschool-aa45d.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "focuschool-aa45d",
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
-    "focuschool-aa45d.firebasestorage.app",
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "832652546416",
-  appId:
-    process.env.NEXT_PUBLIC_FIREBASE_APP_ID ??
-    "1:832652546416:web:b64b5d508a88168429bfb5",
-};
-
+// הקונפיג הציבורי יושב ב-config.ts (ניתן לשינוי דרך env לכל בית ספר).
 export function getFirebaseApp(): FirebaseApp {
   return getApps()[0] ?? initializeApp(firebaseConfig);
 }

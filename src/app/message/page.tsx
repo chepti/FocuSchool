@@ -7,7 +7,7 @@ import { getDb } from "@/lib/firebase";
 import { isStaff, useMember } from "@/lib/useMember";
 import type { Member, MessageType } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 
 const TYPE_LABELS: Record<MessageType, { label: string; hint: string }> = {
   weekly: {

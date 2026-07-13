@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 import "./globals.css";
-import { demoSchool } from "@/lib/demo-data";
+import { SCHOOL_DESCRIPTION, SCHOOL_NAME, SITE_URL } from "@/lib/config";
 
 const fredoka = Fredoka({
   variable: "--font-fredoka",
@@ -9,16 +9,16 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://focuschool.chepti.com"),
+  metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
   title: {
-    default: `${demoSchool.name} — פוקוסקול`,
-    template: `%s — ${demoSchool.name}`,
+    default: `${SCHOOL_NAME} — פוקוסקול`,
+    template: `%s — ${SCHOOL_NAME}`,
   },
-  description: demoSchool.description,
+  description: SCHOOL_DESCRIPTION,
   openGraph: {
-    title: demoSchool.name,
-    description: demoSchool.description,
+    title: SCHOOL_NAME,
+    description: SCHOOL_DESCRIPTION,
     locale: "he_IL",
     type: "website",
   },

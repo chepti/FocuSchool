@@ -5,6 +5,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { getAuthClient, getDb } from "./firebase";
 import type { Member } from "./types";
+import { SCHOOL_ID } from "./config";
 
 export interface MemberState {
   user: User | null;
@@ -13,7 +14,7 @@ export interface MemberState {
 }
 
 /** מצב ההתחברות + תפקיד המשתמש בבית הספר (לפי מייל ברשימת members) */
-export function useMember(schoolId = "demo"): MemberState {
+export function useMember(schoolId = SCHOOL_ID): MemberState {
   const [state, setState] = useState<MemberState>({
     user: null,
     member: null,

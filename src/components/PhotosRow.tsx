@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { useMember } from "@/lib/useMember";
+import { SCHOOL_ID } from "@/lib/config";
 import type { StripItem } from "@/lib/types";
 
 function PhotoFrame({ item }: { item: StripItem }) {
@@ -23,7 +24,7 @@ function PhotoFrame({ item }: { item: StripItem }) {
 export function PhotosRow({
   stripId,
   items,
-  schoolId = "demo",
+  schoolId = SCHOOL_ID,
 }: {
   stripId: string;
   items: StripItem[];

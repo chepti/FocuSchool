@@ -12,7 +12,11 @@ export const API_KEY =
   process.env.NEXT_PUBLIC_FIREBASE_API_KEY ??
   "AIzaSyD8izbQwpjZL7c-3dwD3tmcWD4LL0NDjcA";
 export const FIRESTORE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-export const SITE_URL = "https://focuschool.chepti.com/";
+export const SITE_URL =
+  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://focuschool.chepti.com").replace(
+    /\/?$/,
+    "/",
+  );
 
 function b64url(input: Buffer | string): string {
   return Buffer.from(input)

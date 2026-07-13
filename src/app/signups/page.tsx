@@ -14,7 +14,7 @@ import { getDb } from "@/lib/firebase";
 import { isStaff, useMember } from "@/lib/useMember";
 import type { Member, Signup, SignupEntry } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 
 /** מי נרשם למה — תצוגה חיה לרשימה פתוחה */
 function SignupEntries({ signup }: { signup: Signup }) {

@@ -10,6 +10,7 @@ import {
 import { getDb } from "./firebase";
 import { fetchIcalEvents } from "./ical";
 import { demoEvents, demoSchool, demoStrips } from "./demo-data";
+import { SCHOOL_ID } from "./config";
 import type { School, SchoolEvent, Strip, StripItem } from "./types";
 
 export interface SchoolData {
@@ -24,7 +25,9 @@ export interface SchoolData {
  * אם הדאטהבייס לא זמין או ריק — נסיגה שקטה לנתוני הדמו,
  * כך שהאתר תמיד עולה (וגם build מקומי עובד בלי רשת).
  */
-export async function getSchoolData(schoolId = "demo"): Promise<SchoolData> {
+export async function getSchoolData(
+  schoolId = SCHOOL_ID,
+): Promise<SchoolData> {
   try {
     const db = getDb();
 

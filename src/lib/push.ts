@@ -6,12 +6,24 @@ import {
 } from "firebase/messaging";
 import { doc, setDoc } from "firebase/firestore";
 import { getDb, getFirebaseApp } from "./firebase";
+import { firebaseConfig } from "./config";
 
 const NOTIFICATION_OPTS = {
   icon: "/icon.svg",
   dir: "rtl",
   lang: "he",
 } as const;
+
+// ה-service worker הוא קובץ סטטי ולא רואה env — לכן מעבירים לו את קונפיג
+// ה-Firestore/FCM כפרמטרים ב-URL בעת הרישום. כך כל בית ספר שמעתיק את
+// הפרויקט עובד עם ה-Firebase שלו בלי לערוך את firebase-messaging-sw.js.
+const SW_URL = `/firebase-messaging-sw.js?${new URLSearchParams({
+  apiKey: firebaseConfig.apiKey,
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId,
+}).toString()}`;
 
 export type PushSubscribeResult = "ok" | "denied" | "unsupported" | "error";
 
@@ -32,9 +44,7 @@ export async function subscribeToPush(
   if (permission !== "granted") return "denied";
 
   try {
-    const registration = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js",
-    );
+    const registration = await navigator.serviceWorker.register(SW_URL);
     const token = await getToken(getMessaging(getFirebaseApp()), {
       vapidKey,
       serviceWorkerRegistration: registration,
@@ -86,9 +96,8 @@ export async function attachForegroundNotifications(): Promise<
   }
   return onMessage(getMessaging(getFirebaseApp()), async (payload) => {
     const registration =
-      (await navigator.serviceWorker.getRegistration(
-        "/firebase-messaging-sw.js",
-      )) ?? (await navigator.serviceWorker.ready);
+      (await navigator.serviceWorker.getRegistration("/")) ??
+      (await navigator.serviceWorker.ready);
     await registration.showNotification(
       payload.notification?.title ?? "עדכון מבית הספר",
       {

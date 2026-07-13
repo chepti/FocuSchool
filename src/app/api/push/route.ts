@@ -6,6 +6,7 @@ import {
   serviceAccountToken,
   tokensForMembers,
 } from "@/lib/push-server";
+import { SCHOOL_ID } from "@/lib/config";
 
 /**
  * שליחת נוטיפיקציית בדיקה לכל המכשירים הרשומים — לצוות בלבד
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { title, body, schoolId = "demo" } = (await request.json()) as {
+  const { title, body, schoolId = SCHOOL_ID } = (await request.json()) as {
     title?: string;
     body?: string;
     schoolId?: string;

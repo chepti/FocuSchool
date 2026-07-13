@@ -17,7 +17,7 @@ import { getDb } from "@/lib/firebase";
 import { isStaff, useMember } from "@/lib/useMember";
 import type { DigestPref, Inquiry, StripItem } from "@/lib/types";
 
-const SCHOOL_ID = "demo";
+import { SCHOOL_ID } from "@/lib/config";
 
 interface PendingItem extends StripItem {
   stripId: string;
